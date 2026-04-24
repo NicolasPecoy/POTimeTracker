@@ -1,0 +1,320 @@
+<Window x:Class="POTimeTracker.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:tb="http://www.hardcodet.net/taskbar"
+        Title="PO Time Tracker"
+        Width="420" SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        WindowStartupLocation="Manual"
+        Loaded="Window_Loaded"
+        Deactivated="Window_Deactivated">
+
+    <Window.Resources>
+        <!-- Converters are added from code-behind in Window_Loaded -->
+
+        <!-- NotifyIcon in System Tray -->
+        <tb:TaskbarIcon x:Key="NotifyIcon"
+                        ToolTipText="PO Time Tracker"
+                        IconSource="/Assets/icon.ico"
+                        TrayMouseDoubleClick="NotifyIcon_TrayMouseDoubleClick"
+                        TrayLeftMouseDown="NotifyIcon_TrayMouseDoubleClick">
+            <tb:TaskbarIcon.ContextMenu>
+                <ContextMenu Background="#1C1F2E" BorderBrush="#2A2D3E" Foreground="#E8EAF0">
+                    <MenuItem x:Name="menuOpen" Header="Abrir Widget" Click="MenuItem_Open_Click"/>
+                    <MenuItem x:Name="menuReload" Header="Recargar Proyectos" Click="MenuItem_Reload_Click"/>
+                    <Separator Background="#2A2D3E"/>
+                    <MenuItem x:Name="menuLogout" Header="Cerrar Sesion" Click="MenuItem_Logout_Click"/>
+                    <MenuItem x:Name="menuExit" Header="Salir" Click="MenuItem_Exit_Click"/>
+                </ContextMenu>
+            </tb:TaskbarIcon.ContextMenu>
+        </tb:TaskbarIcon>
+
+        <!-- Storyboard for fade in -->
+        <Storyboard x:Key="FadeIn">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" Duration="0:0:0.2"/>
+            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                             From="10" To="0" Duration="0:0:0.25">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </Window.Resources>
+
+    <Window.RenderTransform>
+        <TranslateTransform/>
+    </Window.RenderTransform>
+
+    <!-- Main Container -->
+    <Border CornerRadius="16"
+            Background="{StaticResource BgSurfaceBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1"
+            Margin="10">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.5" Color="Black"/>
+        </Border.Effect>
+
+        <Grid>
+            <!-- ═══════════ LOGIN VIEW ═══════════ -->
+            <Border x:Name="LoginView" Visibility="Visible" CornerRadius="16">
+                <StackPanel Margin="28,24">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,24">
+                        <Border Background="{StaticResource AccentBrush}" CornerRadius="10"
+                                Width="42" Height="42" Margin="0,0,12,0">
+                            <TextBlock Text="PO" FontWeight="Bold" FontSize="16"
+                                       Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Project Open" Style="{StaticResource HeaderTitle}" FontSize="18"/>
+                            <TextBlock Text="Registro de Horas" Style="{StaticResource HeaderSubtitle}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <TextBlock Text="SERVIDOR" Style="{StaticResource LabelStyle}"/>
+                    <TextBox x:Name="txtServer" Style="{StaticResource ModernTextBox}"
+                             Text="http://po.invenzis.com:8080" Margin="0,0,0,14"/>
+
+                    <TextBlock Text="USUARIO" Style="{StaticResource LabelStyle}"/>
+                    <TextBox x:Name="txtUsername" Style="{StaticResource ModernTextBox}" Margin="0,0,0,14"/>
+
+                    <TextBlock Text="CONTRASENA" Style="{StaticResource LabelStyle}"/>
+                    <PasswordBox x:Name="txtPassword" Style="{StaticResource ModernPasswordBox}" Margin="0,0,0,14"/>
+
+                    <CheckBox x:Name="chkRemember" Content="Recordar sesion" IsChecked="True"
+                              Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,0,18"/>
+
+                    <Button x:Name="btnLogin" Style="{StaticResource AccentButton}"
+                            Content="Iniciar Sesion" Click="BtnLogin_Click" Height="42"/>
+
+                    <TextBlock x:Name="txtLoginError" Foreground="{StaticResource RedBrush}"
+                               FontSize="12" TextWrapping="Wrap" HorizontalAlignment="Center"
+                               Margin="0,12,0,0" Visibility="Collapsed"/>
+
+                    <StackPanel x:Name="LoginLoading" Orientation="Horizontal"
+                                HorizontalAlignment="Center" Margin="0,12,0,0" Visibility="Collapsed">
+                        <TextBlock Text="Conectando..." Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════ MAIN WIDGET VIEW ═══════════ -->
+            <StackPanel x:Name="MainView" Visibility="Collapsed">
+
+                <!-- HEADER -->
+                <Border Padding="18,14" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="{StaticResource BgElevated}" Offset="0"/>
+                            <GradientStop Color="{StaticResource BgSurface}" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Orientation="Horizontal" Grid.Column="0">
+                            <Border Background="{StaticResource AccentBrush}" CornerRadius="8"
+                                    Width="32" Height="32" Margin="0,0,10,0">
+                                <TextBlock Text="PO" FontWeight="Bold" FontSize="13" Foreground="White"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Registro de Horas" Style="{StaticResource HeaderTitle}"/>
+                                <TextBlock x:Name="txtUserDisplay" Text="usuario" Style="{StaticResource HeaderSubtitle}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Grid.Column="2" VerticalAlignment="Center">
+                            <Border Background="{StaticResource GreenSoftBrush}" CornerRadius="12" Padding="8,3" Margin="0,0,6,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="6" Height="6" Fill="{StaticResource GreenBrush}" Margin="0,0,5,0"/>
+                                    <TextBlock Text="Online" Foreground="{StaticResource GreenBrush}" FontSize="11" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                            <Button Style="{StaticResource GhostButton}" Content="--" Width="28" Height="28" Padding="0"
+                                    Click="BtnMinimize_Click" ToolTip="Minimizar a bandeja"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- DATE NAVIGATION -->
+                <Border Background="{StaticResource BgBaseBrush}" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,0,0,1" Padding="18,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Grid.Column="0" Style="{StaticResource NavButton}" Content="&lt;"
+                                Click="BtnPrevDay_Click"/>
+
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock x:Name="txtDayName" HorizontalAlignment="Center"
+                                       FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMutedBrush}"/>
+                            <TextBlock x:Name="txtDayFull" HorizontalAlignment="Center"
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <Button Style="{StaticResource GhostButton}" Content="Hoy" FontSize="11"
+                                    FontWeight="SemiBold" Padding="10,4" Click="BtnToday_Click" Margin="0,0,6,0"/>
+                            <Button Style="{StaticResource NavButton}" Content="&gt;"
+                                    Click="BtnNextDay_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- WEEK STRIP (built from code-behind) -->
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="18,8">
+                    <UniformGrid x:Name="WeekStripPanel" Columns="7"/>
+                </Border>
+
+                <!-- HOURS SUMMARY -->
+                <Border Background="{StaticResource BgBaseBrush}" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,0,0,1" Padding="18,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                            <TextBlock Text="H O Y" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="txtTodayHours" Text="0.0"
+                                       FontSize="18" FontWeight="SemiBold" FontFamily="Consolas"
+                                       Foreground="{StaticResource GreenBrush}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                            <TextBlock Text="S E M A N A" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="txtWeekHours" Text="0.0"
+                                       FontSize="18" FontWeight="SemiBold" FontFamily="Consolas"
+                                       Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            <Border Width="80" Height="4" CornerRadius="2"
+                                    Background="{StaticResource BgElevatedBrush}" Margin="0,4,0,0">
+                                <Border x:Name="WeekProgressBar" Height="4" CornerRadius="2"
+                                        Background="{StaticResource GreenBrush}"
+                                        HorizontalAlignment="Left" Width="0"/>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                            <TextBlock Text="O B J E T I V O" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                            <TextBlock x:Name="txtTargetHours" Text="40.0"
+                                       FontSize="18" FontWeight="SemiBold" FontFamily="Consolas"
+                                       Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ENTRY FORM -->
+                <StackPanel Margin="18,14">
+                    <TextBlock Text="PROYECTO" Style="{StaticResource LabelStyle}"/>
+                    <ComboBox x:Name="cboProject" Style="{StaticResource ModernComboBox}"
+                              DisplayMemberPath="Name" SelectionChanged="CboProject_SelectionChanged" Margin="0,0,0,10"/>
+
+                    <Grid Margin="0,0,0,6">
+                        <TextBlock Text="TAREA" Style="{StaticResource LabelStyle}" Margin="0"/>
+                        <CheckBox x:Name="chkShowAllTasks"
+                                  Content="Mostrar todas"
+                                  HorizontalAlignment="Right"
+                                  VerticalAlignment="Center"
+                                  Foreground="{StaticResource TextSecondaryBrush}"
+                                  FontSize="11"
+                                  Checked="ChkShowAllTasks_Changed"
+                                  Unchecked="ChkShowAllTasks_Changed"/>
+                    </Grid>
+                    <ComboBox x:Name="cboTask" Style="{StaticResource ModernComboBox}"
+                              DisplayMemberPath="Name" Margin="0,0,0,10"/>
+
+                    <TextBlock Text="HORAS" Style="{StaticResource LabelStyle}"/>
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Grid.Column="0" Style="{StaticResource NavButton}" Content="-"
+                                FontFamily="Consolas" FontSize="16" FontWeight="Bold" Click="BtnHoursMinus_Click"/>
+                        <TextBox x:Name="txtHours" Grid.Column="1" Style="{StaticResource ModernTextBox}"
+                                 Text="1.0" TextAlignment="Center" FontFamily="Consolas"
+                                 FontSize="20" FontWeight="SemiBold" Margin="6,0"/>
+                        <Button Grid.Column="2" Style="{StaticResource NavButton}" Content="+"
+                                FontFamily="Consolas" FontSize="16" FontWeight="Bold" Click="BtnHoursPlus_Click"/>
+                    </Grid>
+
+                    <UniformGrid Columns="5" Margin="0,4,0,12">
+                        <Button Style="{StaticResource QuickHourButton}" Content="0.5" Click="QuickHour_Click" Tag="0.5" Margin="2,0"/>
+                        <Button Style="{StaticResource QuickHourButton}" Content="1.0" Click="QuickHour_Click" Tag="1" Margin="2,0"/>
+                        <Button Style="{StaticResource QuickHourButton}" Content="2.0" Click="QuickHour_Click" Tag="2" Margin="2,0"/>
+                        <Button Style="{StaticResource QuickHourButton}" Content="4.0" Click="QuickHour_Click" Tag="4" Margin="2,0"/>
+                        <Button Style="{StaticResource QuickHourButton}" Content="8.0" Click="QuickHour_Click" Tag="8" Margin="2,0"/>
+                    </UniformGrid>
+
+                    <TextBlock Text="NOTAS" Style="{StaticResource LabelStyle}"/>
+                    <TextBox x:Name="txtNotes" Style="{StaticResource ModernTextBox}"
+                             Height="50" AcceptsReturn="True" TextWrapping="Wrap"
+                             VerticalContentAlignment="Top" Margin="0,0,0,12"/>
+
+                    <Button x:Name="btnSubmit" Style="{StaticResource AccentButton}"
+                            Content="Registrar Horas" Click="BtnSubmit_Click" Height="40"/>
+
+                    <TextBlock x:Name="txtStatus" FontSize="12" HorizontalAlignment="Center"
+                               Margin="0,8,0,0" Visibility="Collapsed"/>
+                </StackPanel>
+
+                <!-- ENTRIES LIST -->
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                    <StackPanel>
+                        <Border Background="{StaticResource BgBaseBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="0,0,0,1" Padding="18,8">
+                            <Grid>
+                                <TextBlock Text="REGISTROS DEL DIA" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock x:Name="txtEntryCount" Text="0" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+
+                        <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="EntriesPanel"/>
+                        </ScrollViewer>
+
+                        <TextBlock x:Name="txtEmptyState" Text="No hay registros para este dia"
+                                   FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                   HorizontalAlignment="Center" Padding="0,20" Visibility="Visible"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- FOOTER -->
+                <Border Background="{StaticResource BgBaseBrush}" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,1,0,0" Padding="18,8" CornerRadius="0,0,16,16">
+                    <Grid>
+                        <TextBlock Text="v1.0 - Widget de registro" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock x:Name="txtServerDisplay" Text="po.invenzis.com:8080"
+                                   FontSize="10" FontFamily="Consolas" Foreground="{StaticResource TextMutedBrush}"
+                                   Opacity="0.6" HorizontalAlignment="Right"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
