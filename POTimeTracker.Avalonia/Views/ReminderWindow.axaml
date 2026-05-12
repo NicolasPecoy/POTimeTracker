@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="POTimeTracker.Avalonia.Views.ReminderWindow"
+        Width="320"
+        Height="130"
+        CanResize="False"
+        WindowStartupLocation="Manual"
+        Background="#0F172A">
+
+  <Window.Styles>
+    <Style Selector="TextBlock">
+      <Setter Property="Foreground" Value="#E5E7EB" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="Background" Value="#4F46E5" />
+      <Setter Property="BorderBrush" Value="#4F46E5" />
+      <Setter Property="Foreground" Value="#FFFFFF" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+  </Window.Styles>
+
+  <Border Padding="12" Background="#111827" BorderBrush="#1F2937" BorderThickness="1" CornerRadius="10">
+    <StackPanel Spacing="10">
+      <TextBlock Text="Recordatorio diario" FontWeight="Bold" />
+      <TextBlock Text="No olvides registrar tus horas de hoy." Foreground="#C7D2FE" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Name="CloseButton" Content="Cerrar" Click="CloseButton_Click" />
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</Window>

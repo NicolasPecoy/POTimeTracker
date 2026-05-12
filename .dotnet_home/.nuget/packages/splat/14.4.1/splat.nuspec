@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>Splat</id>
+    <version>14.4.1</version>
+    <authors>.NET Foundation and Contributors</authors>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <projectUrl>https://github.com/reactiveui/splat/</projectUrl>
+    <iconUrl>https://github.com/reactiveui/styleguide/blob/master/logo_splat/logo.png?raw=true</iconUrl>
+    <description>A library to make things cross-platform that should be.</description>
+    <releaseNotes>https://github.com/reactiveui/splat/releases</releaseNotes>
+    <copyright>Copyright (c) .NET Foundation and Contributors</copyright>
+    <tags>drawing colours geometry logging unit test detection service location image handling portable xamarin xamarin ios xamarin mac android monodroid uwp net45</tags>
+    <repository type="git" url="https://github.com/reactiveui/splat" commit="d26df92d7be69c06473d326d2200c35570042a02" />
+    <dependencies>
+      <group targetFramework="net6.0" />
+      <group targetFramework=".NETStandard2.0" />
+    </dependencies>
+  </metadata>
+</package>

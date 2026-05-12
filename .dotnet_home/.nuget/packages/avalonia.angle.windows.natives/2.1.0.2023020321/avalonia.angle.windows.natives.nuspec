@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+  <metadata>
+    <id>Avalonia.Angle.Windows.Natives</id>
+    <version>2.1.0.2023020321</version>
+    <authors>Avalonia</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="file">LICENSE.txt</license>
+    <licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>
+    <icon>Icon.png</icon>
+    <projectUrl>https://avaloniaui.net/</projectUrl>
+    <description>Avalonia is a cross-platform UI framework for .NET providing a flexible styling system and supporting a wide range of Operating Systems such as Windows, Linux, macOS and with experimental support for Android, iOS and WebAssembly.</description>
+    <copyright>Copyright 2023 © The AvaloniaUI Project</copyright>
+    <tags>avalonia avaloniaui angle gpu windows</tags>
+    <repository type="git" url="https://github.com/AvaloniaUI/angle/" commit="1b9ed3b11888067a93a5ea552d705ddaab21adb1" />
+    <dependencies>
+      <group targetFramework=".NETStandard2.0" />
+    </dependencies>
+  </metadata>
+</package>

@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>DynamicData</id>
+    <version>7.9.5</version>
+    <title>Dynamic Data</title>
+    <authors>Roland Pheasant</authors>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <icon>logo.png</icon>
+    <projectUrl>http://dynamic-data.org/</projectUrl>
+    <description>Bring the power of Rx to collections using Dynamic Data.
+Dynamic Data is a comprehensive caching and data manipulation solution which introduces domain centric observable collections.
+      Linq extensions enable dynamic filtering, sorting, grouping, transforms, binding, pagination, data virtualisation, expiration, disposal management plus more.</description>
+    <releaseNotes>https://github.com/reactiveui/DynamicData/releases</releaseNotes>
+    <copyright>Copyright (c) Roland Pheasant 2011-2022</copyright>
+    <tags>DynamicData Dynamic Data Rx Reactive Observable Cache Binding ObservableCache ObservableList ObservableCollection Collection Linq</tags>
+    <repository type="git" url="https://github.com/reactiveui/DynamicData" commit="d3179622d6b5c5ee30bfe1c73aa7e2f6ee958b89" />
+    <dependencies>
+      <group targetFramework=".NETFramework4.6.2">
+        <dependency id="System.Reactive" version="5.0.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net6.0">
+        <dependency id="System.Reactive" version="5.0.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="System.Reactive" version="5.0.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="UAP10.0.16299">
+        <dependency id="System.Reactive" version="5.0.0" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

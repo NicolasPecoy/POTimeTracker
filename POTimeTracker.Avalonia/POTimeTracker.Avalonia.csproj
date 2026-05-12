@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.0.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.0.0" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.0" />
+    <!-- Avalonia.Markup.Xaml removed; runtime XAML generation is enabled and Avalonia package provides necessary support -->
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="8.0.0" />
+    <!-- Removed Avalonia.Controls.Notifications to avoid external dependency; using in-app toast implementation -->
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Enable XAML compilation for Avalonia -->
+    <AvaloniaUseRuntimeXamlGeneration>true</AvaloniaUseRuntimeXamlGeneration>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaXaml Remove="Styles/DarkTheme.axaml" />
+    <AvaloniaResource Remove="Styles/DarkTheme.axaml" />
+    <None Include="Styles/DarkTheme.axaml" />
+  </ItemGroup>
+</Project>

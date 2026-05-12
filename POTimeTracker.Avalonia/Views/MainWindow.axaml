@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="POTimeTracker.Avalonia.Views.MainWindow"
+        Title="PO Time Tracker"
+        Width="500"
+        Height="760"
+        MinWidth="460"
+        MinHeight="640"
+        Background="#0B1220">
+
+  <Window.Styles>
+    <Style Selector="TextBlock">
+      <Setter Property="Foreground" Value="#E5E7EB" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Foreground" Value="#9CA3AF" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="#111827" />
+      <Setter Property="BorderBrush" Value="#1F2937" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="Background" Value="#1F2937" />
+      <Setter Property="BorderBrush" Value="#374151" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="#E5E7EB" />
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="#4F46E5" />
+      <Setter Property="BorderBrush" Value="#4F46E5" />
+      <Setter Property="Foreground" Value="#FFFFFF" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.ghost">
+      <Setter Property="Background" Value="#0F172A" />
+      <Setter Property="BorderBrush" Value="#334155" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#0F172A" />
+      <Setter Property="BorderBrush" Value="#374151" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="#E5E7EB" />
+      <Setter Property="CaretBrush" Value="#E5E7EB" />
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="Background" Value="#0F172A" />
+      <Setter Property="BorderBrush" Value="#374151" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="#E5E7EB" />
+      <Setter Property="Padding" Value="8,4" />
+    </Style>
+    <Style Selector="CheckBox">
+      <Setter Property="Foreground" Value="#CBD5E1" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="ProgressBar">
+      <Setter Property="Foreground" Value="#10B981" />
+      <Setter Property="Background" Value="#1F2937" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,*" Margin="12">
+    <Border Grid.Row="0" Classes="card" Padding="10" Margin="0,0,0,10">
+      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <Border Background="#4F46E5" Width="26" Height="26" CornerRadius="6">
+          <TextBlock Text="PO" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <TextBlock Text="PO Time Tracker" FontWeight="SemiBold" />
+        <TextBlock Name="txtUserDisplay" Text="-" Classes="label" />
+        <TextBlock Text="|" Classes="label" />
+        <TextBlock Name="txtServerDisplay" Text="-" Classes="label" />
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Spacing="10">
+        <Border Name="LoginView" Classes="card" Padding="14">
+          <StackPanel Spacing="8">
+            <TextBlock Text="SERVIDOR" Classes="label" />
+            <TextBox Name="ServerText" Text="http://po.invenzis.com:8080" />
+
+            <TextBlock Text="USUARIO" Classes="label" />
+            <TextBox Name="UsernameText" />
+
+            <TextBlock Text="CONTRASENA" Classes="label" />
+            <TextBox Name="PasswordText" PasswordChar="*" />
+
+            <CheckBox Name="RememberCheck" Content="Recordarme" IsChecked="True" />
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Name="LoginButton" Classes="primary" Content="Iniciar sesion" Width="150" Click="LoginButton_Click" />
+              <TextBlock Name="LoginStatusText" VerticalAlignment="Center" Foreground="#F87171" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Name="MainView" Classes="card" Padding="12" IsVisible="False">
+          <StackPanel Spacing="10">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Button Grid.Column="0" Classes="ghost" Content="&lt;" Width="32" Click="BtnPrevDay_Click" />
+              <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                <TextBlock Name="txtDayName" FontSize="11" HorizontalAlignment="Center" Classes="label" />
+                <TextBlock Name="txtDayFull" FontWeight="SemiBold" HorizontalAlignment="Center" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                <Button Classes="ghost" Content="Hoy" Click="BtnToday_Click" />
+                <Button Classes="ghost" Content="&gt;" Width="32" Click="BtnNextDay_Click" />
+                <Button Classes="ghost" Content="_" Width="32" Click="BtnMinimize_Click" />
+              </StackPanel>
+            </Grid>
+
+            <StackPanel Name="WeekStripPanel" Orientation="Horizontal" Spacing="6" />
+
+            <Grid ColumnDefinitions="*,*,*" Margin="0,2,0,2">
+              <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                <TextBlock Text="Hoy" Classes="label" />
+                <TextBlock Name="txtTodayHours" FontSize="18" FontWeight="Bold" Text="0.0" Foreground="#10B981" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" HorizontalAlignment="Center" Width="130">
+                <TextBlock Text="Semana" HorizontalAlignment="Center" Classes="label" />
+                <TextBlock Name="txtWeekHours" FontSize="18" FontWeight="Bold" Text="0.0" HorizontalAlignment="Center" Foreground="#818CF8" />
+                <ProgressBar Name="WeekProgressBar" Minimum="0" Maximum="100" Height="6" Value="0" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                <TextBlock Text="Objetivo" Classes="label" />
+                <TextBlock Name="txtTargetHours" FontSize="18" FontWeight="Bold" Text="40.0" />
+              </StackPanel>
+            </Grid>
+
+            <TextBlock Text="PROYECTO" Classes="label" />
+            <ComboBox Name="cboProject" SelectionChanged="CboProject_SelectionChanged" />
+
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Column="0" Text="TAREA" VerticalAlignment="Center" Classes="label" />
+              <CheckBox Grid.Column="1" Name="chkShowAllTasks" Content="Mostrar todas"
+                        Checked="ChkShowAllTasks_Changed"
+                        Unchecked="ChkShowAllTasks_Changed" />
+            </Grid>
+            <ComboBox Name="cboTask" />
+
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+              <Button Grid.Column="0" Classes="ghost" Content="-" Width="34" Click="BtnHoursMinus_Click" />
+              <TextBox Grid.Column="1" Name="txtHours" Text="1.0" HorizontalContentAlignment="Center" Margin="6,0" />
+              <Button Grid.Column="2" Classes="ghost" Content="+" Width="34" Click="BtnHoursPlus_Click" Margin="0,0,6,0" />
+              <Button Grid.Column="3" Name="btnSubmit" Classes="primary" Content="Registrar Horas" Width="150" Click="BtnSubmit_Click" />
+            </Grid>
+
+            <UniformGrid Columns="5" Margin="0,0,0,4">
+              <Button Classes="ghost" Content="0.5" Tag="0.5" Click="QuickHour_Click" />
+              <Button Classes="ghost" Content="1.0" Tag="1" Click="QuickHour_Click" />
+              <Button Classes="ghost" Content="2.0" Tag="2" Click="QuickHour_Click" />
+              <Button Classes="ghost" Content="4.0" Tag="4" Click="QuickHour_Click" />
+              <Button Classes="ghost" Content="8.0" Tag="8" Click="QuickHour_Click" />
+            </UniformGrid>
+
+            <TextBlock Text="NOTAS" Classes="label" />
+            <TextBox Name="txtNotes" AcceptsReturn="True" TextWrapping="Wrap" Height="56" />
+
+            <TextBlock Name="txtStatus" IsVisible="False" />
+
+            <Border BorderBrush="#1F2937" BorderThickness="0,1,0,0" Padding="0,8,0,0">
+              <StackPanel Spacing="8">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Grid.Column="0" Text="Registros del dia" Classes="label" />
+                  <TextBlock Grid.Column="1" Name="txtEntryCount" Text="0" Classes="label" />
+                </Grid>
+
+                <ScrollViewer MaxHeight="220">
+                  <StackPanel Name="EntriesPanel" />
+                </ScrollViewer>
+
+                <TextBlock Name="txtEmptyState" Text="No hay registros para este dia"
+                           HorizontalAlignment="Center" Classes="label" />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</Window>

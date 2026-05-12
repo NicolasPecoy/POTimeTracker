@@ -1,0 +1,2 @@
+E:\POTimeTracker\POTimeTracker.Avalonia\publish\osx-x64\POTimeTracker.Avalonia.pdb
+E:\POTimeTracker\POTimeTracker.Avalonia\publish\osx-x64\POTimeTracker.Avalonia
