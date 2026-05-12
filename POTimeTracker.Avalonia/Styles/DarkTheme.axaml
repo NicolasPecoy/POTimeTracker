@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Colors -->
+  <Color x:Key="BgBase">#FF0F1117</Color>
+  <Color x:Key="BgSurface">#FF161822</Color>
+  <Color x:Key="BgElevated">#FF1C1F2E</Color>
+  <Color x:Key="BgHover">#FF232738</Color>
+  <Color x:Key="BgInput">#FF12131D</Color>
+  <Color x:Key="BorderColor">#FF2A2D3E</Color>
+  <Color x:Key="BorderFocus">#FF6366F1</Color>
+  <Color x:Key="TextPrimary">#FFE8EAF0</Color>
+  <Color x:Key="TextSecondary">#FF8B8FA3</Color>
+  <Color x:Key="TextMuted">#FF5C6078</Color>
+  <Color x:Key="Accent">#FF6366F1</Color>
+  <Color x:Key="AccentHover">#FF5558E6</Color>
+  <Color x:Key="Green">#FF34D399</Color>
+  <Color x:Key="Amber">#FFFBBF24</Color>
+  <Color x:Key="Red">#FFF87171</Color>
+
+  <!-- Brushes -->
+  <SolidColorBrush x:Key="BgBaseBrush" Color="{StaticResource BgBase}"/>
+  <SolidColorBrush x:Key="BgSurfaceBrush" Color="{StaticResource BgSurface}"/>
+  <SolidColorBrush x:Key="BgElevatedBrush" Color="{StaticResource BgElevated}"/>
+  <SolidColorBrush x:Key="BgHoverBrush" Color="{StaticResource BgHover}"/>
+  <SolidColorBrush x:Key="BgInputBrush" Color="{StaticResource BgInput}"/>
+  <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
+  <SolidColorBrush x:Key="BorderFocusBrush" Color="{StaticResource BorderFocus}"/>
+  <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/>
+  <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/>
+  <SolidColorBrush x:Key="TextMutedBrush" Color="{StaticResource TextMuted}"/>
+  <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource Accent}"/>
+  <SolidColorBrush x:Key="AccentHoverBrush" Color="{StaticResource AccentHover}"/>
+  <SolidColorBrush x:Key="GreenBrush" Color="{StaticResource Green}"/>
+  <SolidColorBrush x:Key="AmberBrush" Color="{StaticResource Amber}"/>
+  <SolidColorBrush x:Key="RedBrush" Color="{StaticResource Red}"/>
+
+  <SolidColorBrush x:Key="AccentSoftBrush" Color="#196366F1"/>
+  <SolidColorBrush x:Key="GreenSoftBrush" Color="#1934D399"/>
+  <SolidColorBrush x:Key="RedSoftBrush" Color="#19F87171"/>
+
+  <!-- Simple control styles to approximate WPF look -->
+  <Style Selector="TextBox">
+    <Setter Property="Background" Value="{StaticResource BgInputBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    <Setter Property="Padding" Value="8"/>
+  </Style>
+
+  <Style Selector="PasswordBox">
+    <Setter Property="Background" Value="{StaticResource BgInputBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    <Setter Property="Padding" Value="8"/>
+  </Style>
+
+  <Style Selector="Button">
+    <Setter Property="Background" Value="{StaticResource BgElevatedBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="Padding" Value="8"/>
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Setter Property="Background" Value="{StaticResource BgInputBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+  </Style>
+
+  <Style Selector="ListBox">
+    <Setter Property="Background" Value="{StaticResource BgSurfaceBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+  </Style>
+
+  <!-- Named styles compatible with original WPF keys -->
+  <Style x:Key="LabelStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Margin" Value="0,0,0,6"/>
+  </Style>
+
+  <Style x:Key="HeaderTitle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="15"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+
+  <Style x:Key="HeaderSubtitle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+  </Style>
+
+  <Style x:Key="ModernTextBox" TargetType="TextBox">
+    <Setter Property="Background" Value="{StaticResource BgInputBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="10,8"/>
+    <Setter Property="FontSize" Value="13"/>
+  </Style>
+
+  <Style x:Key="ModernPasswordBox" TargetType="PasswordBox">
+    <Setter Property="Background" Value="{StaticResource BgInputBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="10,8"/>
+    <Setter Property="FontSize" Value="13"/>
+  </Style>
+
+  <Style x:Key="ModernComboBox" TargetType="ComboBox">
+    <Setter Property="Background" Value="{StaticResource BgInputBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="10,8"/>
+    <Setter Property="FontSize" Value="13"/>
+  </Style>
+
+  <Style x:Key="AccentButton" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding" Value="16,10"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+
+  <Style x:Key="GhostButton" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource BgElevatedBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="8,5"/>
+    <Setter Property="FontSize" Value="12"/>
+  </Style>
+
+  <Style x:Key="QuickHourButton" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource BgElevatedBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="0,5"/>
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+
+  <Style x:Key="NavButton" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource BgElevatedBrush}"/>
+    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Width" Value="30"/>
+    <Setter Property="Height" Value="30"/>
+    <Setter Property="FontSize" Value="14"/>
+  </Style>
+
+</ResourceDictionary>
+<!-- End of Resource Dictionary -->

@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Avalonia.X11</name>
+    </assembly>
+    <members>
+        <member name="T:Avalonia.X11RenderingMode">
+            <summary>
+            Represents the rendering mode for platform graphics.
+            </summary>
+        </member>
+        <member name="F:Avalonia.X11RenderingMode.Software">
+            <summary>
+            Avalonia is rendered into a framebuffer.
+            </summary>
+        </member>
+        <member name="F:Avalonia.X11RenderingMode.Glx">
+            <summary>
+            Enables Glx rendering.
+            </summary>
+        </member>
+        <member name="F:Avalonia.X11RenderingMode.Egl">
+            <summary>
+            Enables native Linux EGL rendering.
+            </summary>
+        </member>
+        <member name="T:Avalonia.X11PlatformOptions">
+            <summary>
+            Platform-specific options which apply to Linux.
+            </summary>
+        </member>
+        <member name="P:Avalonia.X11PlatformOptions.RenderingMode">
+            <summary>
+            Gets or sets Avalonia rendering modes with fallbacks.
+            The first element in the array has the highest priority.
+            The default value is: <see cref="F:Avalonia.X11RenderingMode.Glx"/>, <see cref="F:Avalonia.X11RenderingMode.Software"/>.
+            </summary>
+            <remarks>
+            If application should work on as wide range of devices as possible, at least add <see cref="F:Avalonia.X11RenderingMode.Software"/> as a fallback value.
+            </remarks>
+            <exception cref="T:System.InvalidOperationException">Thrown if no values were matched.</exception>
+        </member>
+        <member name="P:Avalonia.X11PlatformOptions.OverlayPopups">
+            <summary>
+            Embeds popups to the window when set to true. The default value is false.
+            </summary>
+        </member>
+        <member name="P:Avalonia.X11PlatformOptions.UseDBusMenu">
+            <summary>
+            Enables global menu support on Linux desktop environments where it's supported (e. g. XFCE and MATE with plugin, KDE, etc).
+            The default value is true.
+            </summary>
+        </member>
+        <member name="P:Avalonia.X11PlatformOptions.UseDBusFilePicker">
+            <summary>
+            Enables DBus file picker instead of GTK.
+            The default value is true.
+            </summary>
+        </member>
+        <member name="P:Avalonia.X11PlatformOptions.EnableIme">
+            <summary>
+            Determines whether to use IME.
+            IME would be enabled by default if the current user input language is one of the following: Mandarin, Japanese, Vietnamese or Korean.
+            </summary>
+            <remarks>
+            Input method editor is a component that enables users to generate characters not natively available 
+            on their input devices by using sequences of characters or mouse operations that are natively available on their input devices.
+            </remarks>
+        </member>
+        <member name="P:Avalonia.X11PlatformOptions.EnableSessionManagement">
+            <summary>
+            Determines whether to enable support for the
+            X Session Management Protocol.
+            </summary>
+            <remarks>
+            X Session Management Protocol is a standard implemented on most
+            Linux systems that uses Xorg. This enables apps to control how they
+            can control and/or cancel the pending shutdown requested by the user.
+            </remarks>
+        </member>
+        <member name="P:Avalonia.X11PlatformOptions.EnableMultiTouch">
+            <summary>
+            Enables multitouch support. The default value is true.
+            </summary>
+            <remarks>
+            Multitouch allows a surface (a touchpad or touchscreen) to recognize the presence of more than one point of contact with the surface at the same time.
+            </remarks>
+        </member>
+    </members>
+</doc>

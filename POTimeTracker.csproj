@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -21,5 +21,16 @@
     <Resource Include="Assets\icon.ico" />
     <Content Include="Assets\*.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!-- Exclude the Avalonia sample project folder from the original WPF project compilation -->
+  <ItemGroup>
+    <Compile Remove="POTimeTracker.Avalonia\**\*.cs" />
+    <None Remove="POTimeTracker.Avalonia\**\*.*" />
+    <EmbeddedResource Remove="POTimeTracker.Avalonia\**\*.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="POTimeTracker.Avalonia\Styles\DarkTheme.axaml" />
+  </ItemGroup>
+
 
 </Project>
