@@ -57,6 +57,11 @@ namespace POTimeTracker.Models
         public string Password { get; set; } = "";
         public bool RememberMe { get; set; } = true;
         public double WeeklyTarget { get; set; } = 40;
+        public int ReminderHour { get; set; } = 17;
+        public int ReminderMinute { get; set; } = 15;
+        public bool ReminderOnSaturday { get; set; } = false;
+        public bool ReminderOnSunday { get; set; } = false;
+        public double ReloginIntervalHours { get; set; } = 3.0;
     }
 
     public class WeekDay

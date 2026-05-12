@@ -445,3 +445,7 @@ FodyWeavers.xsd
 **/[Bb]in/**
 **/[Oo]bj/
 **/[Oo]bj/**
+/.claude
+/obj
+/obj/Debug
+/obj/Debug/net8.0-windows

@@ -1,0 +1,187 @@
+<Window x:Class="POTimeTracker.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Configuracion - PO Time Tracker"
+        Width="420" SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        WindowStartupLocation="Manual"
+        Loaded="Window_Loaded">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/DarkTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Window.RenderTransform>
+        <TranslateTransform/>
+    </Window.RenderTransform>
+
+    <Border CornerRadius="16"
+            Background="{StaticResource BgSurfaceBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1"
+            Margin="10">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.5" Color="Black"/>
+        </Border.Effect>
+
+        <StackPanel>
+            <!-- HEADER -->
+            <Border Padding="18,14" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" CornerRadius="16,16,0,0">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="{StaticResource BgElevated}" Offset="0"/>
+                        <GradientStop Color="{StaticResource BgSurface}" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Grid.Column="0">
+                        <Border Background="{StaticResource AccentBrush}" CornerRadius="8"
+                                Width="32" Height="32" Margin="0,0,10,0">
+                            <TextBlock Text="PO" FontWeight="Bold" FontSize="13" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Configuracion" Style="{StaticResource HeaderTitle}"/>
+                            <TextBlock Text="Parametros del widget" Style="{StaticResource HeaderSubtitle}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Button Grid.Column="2" Style="{StaticResource GhostButton}"
+                            Content="X" Width="28" Height="28" Padding="0"
+                            Click="BtnClose_Click" ToolTip="Cerrar"/>
+                </Grid>
+            </Border>
+
+            <!-- CONTENT -->
+            <StackPanel Margin="18,16">
+
+                <!-- SECTION: RECORDATORIO -->
+                <Border Background="{StaticResource BgBaseBrush}" CornerRadius="10"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        Padding="14,12" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="RECORDATORIO DIARIO" Style="{StaticResource LabelStyle}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="HORA DEL RECORDATORIO" Style="{StaticResource LabelStyle}"/>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="cboHour" Grid.Column="0"
+                                      Style="{StaticResource ModernComboBox}"/>
+                            <TextBlock Grid.Column="1" Text=":" FontSize="20" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center" Margin="8,0"/>
+                            <ComboBox x:Name="cboMinute" Grid.Column="2"
+                                      Style="{StaticResource ModernComboBox}"/>
+                        </Grid>
+
+                        <TextBlock Text="NOTIFICAR EN FINES DE SEMANA" Style="{StaticResource LabelStyle}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                            <CheckBox x:Name="chkSaturday" Content="Sabados"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      FontSize="12" Margin="0,0,16,0"/>
+                            <CheckBox x:Name="chkSunday" Content="Domingos"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      FontSize="12"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- SECTION: SESION -->
+                <Border Background="{StaticResource BgBaseBrush}" CornerRadius="10"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        Padding="14,12" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="SESION" Style="{StaticResource LabelStyle}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="RE-CONEXION AUTOMATICA (HORAS)" Style="{StaticResource LabelStyle}"/>
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Style="{StaticResource NavButton}" Content="-"
+                                    FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                                    Click="BtnReloginMinus_Click"/>
+                            <TextBox x:Name="txtReloginInterval" Grid.Column="1"
+                                     Style="{StaticResource ModernTextBox}"
+                                     Text="3" TextAlignment="Center"
+                                     FontFamily="Consolas" FontSize="18" FontWeight="SemiBold"
+                                     Margin="6,0"/>
+                            <Button Grid.Column="2" Style="{StaticResource NavButton}" Content="+"
+                                    FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                                    Click="BtnReloginPlus_Click"/>
+                        </Grid>
+                        <TextBlock Text="Intervalo minimo: 0.5 horas - Maximo: 24 horas"
+                                   FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                                   Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- SECTION: OBJETIVO SEMANAL -->
+                <Border Background="{StaticResource BgBaseBrush}" CornerRadius="10"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        Padding="14,12" Margin="0,0,0,18">
+                    <StackPanel>
+                        <TextBlock Text="OBJETIVO SEMANAL" Style="{StaticResource LabelStyle}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="HORAS POR SEMANA" Style="{StaticResource LabelStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Style="{StaticResource NavButton}" Content="-"
+                                    FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                                    Click="BtnWeeklyMinus_Click"/>
+                            <TextBox x:Name="txtWeeklyTarget" Grid.Column="1"
+                                     Style="{StaticResource ModernTextBox}"
+                                     Text="40" TextAlignment="Center"
+                                     FontFamily="Consolas" FontSize="18" FontWeight="SemiBold"
+                                     Margin="6,0"/>
+                            <Button Grid.Column="2" Style="{StaticResource NavButton}" Content="+"
+                                    FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                                    Click="BtnWeeklyPlus_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- BUTTONS -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Style="{StaticResource GhostButton}"
+                            Content="Cancelar" Height="40" Click="BtnClose_Click"/>
+                    <Button Grid.Column="2" Style="{StaticResource AccentButton}"
+                            Content="Guardar" Height="40" Click="BtnSave_Click"/>
+                </Grid>
+
+                <TextBlock x:Name="txtStatus" FontSize="12" HorizontalAlignment="Center"
+                           Margin="0,10,0,0" Visibility="Collapsed"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

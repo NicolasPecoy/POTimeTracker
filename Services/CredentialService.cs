@@ -74,7 +74,12 @@ namespace POTimeTracker.Services
             var json = JsonSerializer.Serialize(new
             {
                 config.WeeklyTarget,
-                config.ServerUrl
+                config.ServerUrl,
+                config.ReminderHour,
+                config.ReminderMinute,
+                config.ReminderOnSaturday,
+                config.ReminderOnSunday,
+                config.ReloginIntervalHours
             });
             File.WriteAllText(ConfigFile, json);
         }
@@ -90,7 +95,12 @@ namespace POTimeTracker.Services
                 return new LoginCredentials
                 {
                     WeeklyTarget = data.TryGetProperty("WeeklyTarget", out var wt) ? wt.GetDouble() : 40,
-                    ServerUrl = data.TryGetProperty("ServerUrl", out var su) ? su.GetString() ?? "" : ""
+                    ServerUrl = data.TryGetProperty("ServerUrl", out var su) ? su.GetString() ?? "" : "",
+                    ReminderHour = data.TryGetProperty("ReminderHour", out var rh) ? rh.GetInt32() : 17,
+                    ReminderMinute = data.TryGetProperty("ReminderMinute", out var rm) ? rm.GetInt32() : 15,
+                    ReminderOnSaturday = data.TryGetProperty("ReminderOnSaturday", out var rs) && rs.GetBoolean(),
+                    ReminderOnSunday = data.TryGetProperty("ReminderOnSunday", out var rsu) && rsu.GetBoolean(),
+                    ReloginIntervalHours = data.TryGetProperty("ReloginIntervalHours", out var ri) ? ri.GetDouble() : 3.0
                 };
             }
             catch { return null; }
