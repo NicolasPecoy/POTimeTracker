@@ -10,6 +10,7 @@
 *.userosscache
 *.sln.docstates
 *.env
+*.claude
 bin
 obj
 [Bb]in/

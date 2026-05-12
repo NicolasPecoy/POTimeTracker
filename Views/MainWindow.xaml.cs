@@ -27,8 +27,16 @@ namespace POTimeTracker.Views
         private TaskbarIcon? _notifyIcon;
         private bool _suppressAutoHide;
         private DispatcherTimer? _reminderTimer;
+        private DispatcherTimer? _reloginTimer;
         private DateTime? _lastReminderDate;
         private ReminderWindow? _reminderWindow;
+
+        // Settings (loaded from config)
+        private int _reminderHour = 17;
+        private int _reminderMinute = 15;
+        private bool _reminderOnSaturday = false;
+        private bool _reminderOnSunday = false;
+        private double _reloginIntervalHours = 3.0;
 
         private static readonly string[] DayNames = { "DOMINGO","LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO" };
         private static readonly string[] MonthNames = { "Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre" };
@@ -60,6 +68,7 @@ namespace POTimeTracker.Views
             _notifyIcon = (TaskbarIcon)FindResource("NotifyIcon");
             ApplyMenuIcons();
             EnsureRunAtStartup();
+            LoadSettings();
             StartDailyReminderTimer();
             PositionAboveTray();
 
@@ -75,6 +84,7 @@ namespace POTimeTracker.Views
                 var (success, _) = await _api.LoginAsync(creds.ServerUrl, creds.Username, creds.Password);
                 if (success)
                 {
+                    StartReloginTimer();
                     await SwitchToMainViewAsync();
                     if (IsBackgroundStartup())
                         Hide();
@@ -89,6 +99,18 @@ namespace POTimeTracker.Views
             Show();
             Activate();
             PlayFadeIn();
+        }
+
+        private void LoadSettings()
+        {
+            var config = CredentialService.LoadConfig();
+            if (config == null) return;
+            _reminderHour = config.ReminderHour;
+            _reminderMinute = config.ReminderMinute;
+            _reminderOnSaturday = config.ReminderOnSaturday;
+            _reminderOnSunday = config.ReminderOnSunday;
+            _reloginIntervalHours = config.ReloginIntervalHours > 0 ? config.ReloginIntervalHours : 3.0;
+            if (config.WeeklyTarget > 0) _weeklyTarget = config.WeeklyTarget;
         }
 
         private void PositionAboveTray()
@@ -134,6 +156,7 @@ namespace POTimeTracker.Views
                     CredentialService.SaveCredentials(username, password, server);
                     CredentialService.SaveConfig(new LoginCredentials { WeeklyTarget = _weeklyTarget, ServerUrl = server });
                 }
+                StartReloginTimer();
                 await SwitchToMainViewAsync();
             }
             else
@@ -526,6 +549,20 @@ namespace POTimeTracker.Views
             if (!TryParseHours(txtHours.Text, out var hours) || hours <= 0)
             { ShowStatusMessage("Ingresa las horas", true); return; }
 
+            var key = DateKey(_currentDate);
+            if (!_entries.ContainsKey(key)) _entries[key] = new List<TimeEntry>();
+
+            // Look for an existing local entry for the same project+task today
+            var existingEntry = _entries[key].FirstOrDefault(x =>
+                x.ProjectId == project.Id && x.TaskId == task.Id);
+
+            // Calculate total hours to submit (add to existing instead of overwrite)
+            double totalHours = hours;
+            if (existingEntry != null)
+                totalHours = existingEntry.Hours + hours;
+            else if (task.ExistingHours > 0)
+                totalHours = task.ExistingHours + hours;
+
             var entry = new TimeEntry
             {
                 Date = _currentDate,
@@ -536,7 +573,7 @@ namespace POTimeTracker.Views
                 TaskName = task.Name,
                 GxTaskRowId = task.GxRowId,
                 GxProjectRowId = task.GxProjectRowId,
-                Hours = hours,
+                Hours = totalHours,
                 Notes = txtNotes.Text.Trim()
             };
 
@@ -552,7 +589,7 @@ namespace POTimeTracker.Views
                 btnSubmit.Background = GreenBrushCached;
                 ShowStatusMessage(message, false);
                 _notifyIcon?.ShowBalloonTip("Horas registradas",
-                    $"{hours:0.0}h - {project.Name}", BalloonIcon.Info);
+                    $"{totalHours:0.0}h - {project.Name}", BalloonIcon.Info);
             }
             else
             {
@@ -562,9 +599,18 @@ namespace POTimeTracker.Views
                 ShowStatusMessage($"{message} - guardado localmente", true);
             }
 
-            var key = DateKey(_currentDate);
-            if (!_entries.ContainsKey(key)) _entries[key] = new List<TimeEntry>();
-            _entries[key].Add(entry);
+            // Update local entry (merge or add)
+            if (existingEntry != null)
+            {
+                existingEntry.Hours = totalHours;
+                if (!string.IsNullOrEmpty(entry.Notes))
+                    existingEntry.Notes = entry.Notes;
+                existingEntry.Synced = entry.Synced;
+            }
+            else
+            {
+                _entries[key].Add(entry);
+            }
 
             await System.Threading.Tasks.Task.Delay(1500);
             btnSubmit.Content = "Registrar Horas";
@@ -642,12 +688,36 @@ namespace POTimeTracker.Views
         private void CheckDailyReminder()
         {
             var now = DateTime.Now;
-            var reminderTime = now.Date.AddHours(17).AddMinutes(15);
+
+            if (now.DayOfWeek == DayOfWeek.Saturday && !_reminderOnSaturday) return;
+            if (now.DayOfWeek == DayOfWeek.Sunday && !_reminderOnSunday) return;
+
+            var reminderTime = now.Date.AddHours(_reminderHour).AddMinutes(_reminderMinute);
             if (now < reminderTime || _lastReminderDate == now.Date)
                 return;
 
             _lastReminderDate = now.Date;
             ShowDailyReminder();
+        }
+
+        private void StartReloginTimer()
+        {
+            _reloginTimer?.Stop();
+            double interval = _reloginIntervalHours > 0 ? _reloginIntervalHours : 3.0;
+            _reloginTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromHours(interval)
+            };
+            _reloginTimer.Tick += async (_, _) => await BackgroundReloginAsync();
+            _reloginTimer.Start();
+        }
+
+        private async System.Threading.Tasks.Task BackgroundReloginAsync()
+        {
+            if (!_api.IsLoggedIn) return;
+            var creds = CredentialService.LoadCredentials();
+            if (creds == null || string.IsNullOrEmpty(creds.Username)) return;
+            await _api.LoginAsync(creds.ServerUrl, creds.Username, creds.Password);
         }
 
         private void ShowDailyReminder()
@@ -674,6 +744,7 @@ namespace POTimeTracker.Views
             SetMenuIcon(FindMenuItem("Recargar Proyectos"), "reload-projects.png");
             SetMenuIcon(FindMenuItem("Cerrar Sesion"), "logout.png");
             SetMenuIcon(FindMenuItem("Salir"), "exit.png");
+            // Configuracion no tiene icono especifico, no se llama SetMenuIcon
         }
 
         private MenuItem? FindMenuItem(string header)
@@ -725,6 +796,35 @@ namespace POTimeTracker.Views
             MainView.Visibility = Visibility.Collapsed;
             LoginView.Visibility = Visibility.Visible;
             Show(); PositionAboveTray(); Activate();
+        }
+
+        private void MenuItem_Settings_Click(object sender, RoutedEventArgs e) => OpenSettings();
+        private void BtnSettings_Click(object sender, RoutedEventArgs e) => OpenSettings();
+
+        private void OpenSettings()
+        {
+            var win = new SettingsWindow();
+
+            Hide();
+
+            win.ShowDialog();
+
+            if (win.SettingsSaved)
+            {
+                LoadSettings();
+                StartReloginTimer();
+                _weeklyTarget = CredentialService.LoadConfig()?.WeeklyTarget ?? _weeklyTarget;
+                txtTargetHours.Text = _weeklyTarget.ToString("0.0");
+                UpdateSummary();
+            }
+
+            _suppressAutoHide = true;
+            Show();
+            PositionAboveTray();
+            Activate();
+            PlayFadeIn();
+            _ = System.Threading.Tasks.Task.Delay(500).ContinueWith(
+                _ => Dispatcher.Invoke(() => _suppressAutoHide = false));
         }
 
         private void MenuItem_Exit_Click(object sender, RoutedEventArgs e)
