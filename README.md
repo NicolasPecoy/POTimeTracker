@@ -15,6 +15,7 @@ Widget de escritorio WPF moderno que se integra con **Project Open** para regist
 - **Registro rápido** — Botones de horas rápidas (0.5, 1, 2, 4, 8h)
 - **UI moderna oscura** — Diseño tipo Fluent/WinUI con animaciones
 - **Fallback local** — Si el servidor no responde, guarda localmente
+- **Log de errores** — Registro automático de errores en archivos de log con rotación de 7 días
 
 ---
 
@@ -92,12 +93,33 @@ POTimeTracker/
 │   └── Models.cs               # POProject, POTask, TimeEntry, etc.
 ├── Services/
 │   ├── CredentialService.cs    # Almacenamiento seguro de credenciales (DPAPI)
+│   ├── LogService.cs           # Logger de errores con rotación de archivos
 │   └── POApiService.cs         # Cliente HTTP para login y API de PO
 ├── Converters/
 │   └── Converters.cs           # Converters de XAML (colores, visibilidad, etc.)
 └── Assets/
     └── icon.ico                # Ícono de la aplicación (agregar el tuyo)
 ```
+
+---
+
+## 📝 Logs
+
+Los logs se guardan en `%LOCALAPPDATA%\POTimeTracker\logs\` con un archivo por día:
+
+```
+app-2025-05-13.log
+app-2025-05-12.log
+...
+```
+
+Se capturan automáticamente:
+- **Errores de conexión** al servidor de PO (login, carga de proyectos, envío de horas)
+- **Errores de archivos** al leer/escribir credenciales, configuración y registros locales
+- **Excepciones no manejadas** de cualquier parte de la aplicación (UI thread, background, Tasks)
+- **Advertencias** de re-login automático y registro de inicio con Windows
+
+Los archivos tienen más de 7 días se eliminan automáticamente.
 
 ---
 
