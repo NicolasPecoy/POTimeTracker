@@ -110,9 +110,21 @@ namespace POTimeTracker.Services
                 return (false, error.Length > 0
                     ? error : BuildLoginFailureMessage(verifyUrl, verifyHtml));
             }
-            catch (HttpRequestException ex) { return (false, $"Error de conexión: {ex.Message}"); }
-            catch (TaskCanceledException)    { return (false, "Timeout: el servidor no respondió"); }
-            catch (Exception ex)             { return (false, $"Error: {ex.Message}"); }
+            catch (HttpRequestException ex)
+            {
+                LogService.Warn($"Login: error de conexion a {_serverUrl}", ex);
+                return (false, $"Error de conexión: {ex.Message}");
+            }
+            catch (TaskCanceledException ex)
+            {
+                LogService.Warn("Login: timeout al conectar con el servidor", ex);
+                return (false, "Timeout: el servidor no respondió");
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("Login: excepcion inesperada", ex);
+                return (false, $"Error: {ex.Message}");
+            }
         }
 
         // ═══════════════════════════════════════════════════════════
@@ -140,7 +152,7 @@ namespace POTimeTracker.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"GetProjects error: {ex.Message}");
+                LogService.Error("GetProjectsAsync: error al cargar proyectos", ex);
                 return new List<POProject>();
             }
         }
@@ -519,7 +531,11 @@ namespace POTimeTracker.Services
                 var msg = ExtractErrorMessage(body);
                 return (false, string.IsNullOrEmpty(msg) ? "Error al registrar" : msg);
             }
-            catch (Exception ex) { return (false, $"Error: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                LogService.Error("SubmitTimeEntryAsync: excepcion inesperada", ex);
+                return (false, $"Error: {ex.Message}");
+            }
         }
 
         // ═══════════════════════════════════════════════════════════

@@ -64,8 +64,9 @@ namespace POTimeTracker.Services
                     WeeklyTarget = config?.WeeklyTarget ?? 40
                 };
             }
-            catch
+            catch (Exception ex)
             {
+                LogService.Error("LoadCredentials: error al leer credenciales", ex);
                 return null;
             }
         }
@@ -111,7 +112,11 @@ namespace POTimeTracker.Services
                     ReloginIntervalHours = data.TryGetProperty("ReloginIntervalHours", out var ri) ? ri.GetDouble() : 3.0
                 };
             }
-            catch { return null; }
+            catch (Exception ex)
+            {
+                LogService.Error("LoadConfig: error al leer configuracion", ex);
+                return null;
+            }
         }
 
         public static void SaveEntries(Dictionary<string, List<TimeEntry>> entries)
@@ -122,7 +127,7 @@ namespace POTimeTracker.Services
                 var json = JsonSerializer.Serialize(entries, JsonOpts);
                 File.WriteAllText(EntriesFile, json);
             }
-            catch { /* best-effort */ }
+            catch (Exception ex) { LogService.Error("SaveEntries: error al guardar registros", ex); }
         }
 
         public static Dictionary<string, List<TimeEntry>> LoadEntries()
@@ -141,7 +146,11 @@ namespace POTimeTracker.Services
                     .Where(kv => DateTime.TryParse(kv.Key, out var d) && d.Date >= cutoff)
                     .ToDictionary(kv => kv.Key, kv => kv.Value);
             }
-            catch { return new Dictionary<string, List<TimeEntry>>(); }
+            catch (Exception ex)
+            {
+                LogService.Error("LoadEntries: error al leer registros", ex);
+                return new Dictionary<string, List<TimeEntry>>();
+            }
         }
     }
 }

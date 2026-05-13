@@ -673,9 +673,9 @@ namespace POTimeTracker.Views
                 using var key = Registry.CurrentUser.OpenSubKey(runKeyPath, writable: true);
                 key?.SetValue("POTimeTracker", $"\"{exePath}\" --background");
             }
-            catch
+            catch (Exception ex)
             {
-                // Startup registration is best-effort; the app still works from tray/manual launch.
+                LogService.Warn("EnsureRunAtStartup: no se pudo registrar inicio automatico", ex);
             }
         }
 
@@ -728,7 +728,16 @@ namespace POTimeTracker.Views
             if (!_api.IsLoggedIn) return;
             var creds = CredentialService.LoadCredentials();
             if (creds == null || string.IsNullOrEmpty(creds.Username)) return;
-            await _api.LoginAsync(creds.ServerUrl, creds.Username, creds.Password);
+            try
+            {
+                var (success, message) = await _api.LoginAsync(creds.ServerUrl, creds.Username, creds.Password);
+                if (!success)
+                    LogService.Warn($"BackgroundRelogin: fallo el re-login: {message}");
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("BackgroundReloginAsync: excepcion inesperada", ex);
+            }
         }
 
         private void ShowDailyReminder()
