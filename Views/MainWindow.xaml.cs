@@ -222,6 +222,31 @@ namespace POTimeTracker.Views
             var showAllTasks = chkShowAllTasks.IsChecked == true;
 
             _projects = await _api.GetProjectsAsync(_currentDate, showAllTasks);
+
+            // If empty and we think we're logged in, the session likely expired on the server.
+            // Try to re-authenticate silently and retry once.
+            if (_projects.Count == 0 && _api.IsLoggedIn)
+            {
+                var creds = CredentialService.LoadCredentials();
+                if (creds != null && !string.IsNullOrEmpty(creds.Username))
+                {
+                    var (success, _) = await _api.LoginAsync(creds.ServerUrl, creds.Username, creds.Password);
+                    if (success)
+                    {
+                        _projects = await _api.GetProjectsAsync(_currentDate, showAllTasks);
+                    }
+                    else
+                    {
+                        _api.Logout();
+                        MainView.Visibility = Visibility.Collapsed;
+                        LoginView.Visibility = Visibility.Visible;
+                        Show(); PositionAboveTray(); Activate();
+                        ShowLoginError("Sesion expirada. Volve a iniciar sesion.");
+                        return;
+                    }
+                }
+            }
+
             cboProject.ItemsSource = _projects;
 
             var selected = _projects.FirstOrDefault(p => p.Id == selectedProjectId) ?? _projects.FirstOrDefault();
