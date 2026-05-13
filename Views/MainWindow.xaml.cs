@@ -69,6 +69,7 @@ namespace POTimeTracker.Views
             ApplyMenuIcons();
             EnsureRunAtStartup();
             LoadSettings();
+            LoadPersistedEntries();
             StartDailyReminderTimer();
             PositionAboveTray();
 
@@ -99,6 +100,13 @@ namespace POTimeTracker.Views
             Show();
             Activate();
             PlayFadeIn();
+        }
+
+        private void LoadPersistedEntries()
+        {
+            var saved = CredentialService.LoadEntries();
+            foreach (var kv in saved)
+                _entries[kv.Key] = kv.Value;
         }
 
         private void LoadSettings()
@@ -472,6 +480,7 @@ namespace POTimeTracker.Views
                 if (_entries.ContainsKey(key))
                 {
                     _entries[key].RemoveAll(x => x.Id == id);
+                    CredentialService.SaveEntries(_entries);
                     RefreshAll();
                     ShowStatusMessage("Registro eliminado", false);
                 }
@@ -611,6 +620,8 @@ namespace POTimeTracker.Views
             {
                 _entries[key].Add(entry);
             }
+
+            CredentialService.SaveEntries(_entries);
 
             await System.Threading.Tasks.Task.Delay(1500);
             btnSubmit.Content = "Registrar Horas";
