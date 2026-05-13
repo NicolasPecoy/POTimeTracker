@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -19,6 +21,12 @@ namespace POTimeTracker.Services
 
         private static readonly string CredFile = Path.Combine(AppFolder, "cred.dat");
         private static readonly string ConfigFile = Path.Combine(AppFolder, "config.json");
+        private static readonly string EntriesFile = Path.Combine(AppFolder, "entries.json");
+
+        private static readonly JsonSerializerOptions JsonOpts = new()
+        {
+            WriteIndented = false
+        };
 
         public static void SaveCredentials(string username, string password, string serverUrl)
         {
@@ -104,6 +112,36 @@ namespace POTimeTracker.Services
                 };
             }
             catch { return null; }
+        }
+
+        public static void SaveEntries(Dictionary<string, List<TimeEntry>> entries)
+        {
+            try
+            {
+                Directory.CreateDirectory(AppFolder);
+                var json = JsonSerializer.Serialize(entries, JsonOpts);
+                File.WriteAllText(EntriesFile, json);
+            }
+            catch { /* best-effort */ }
+        }
+
+        public static Dictionary<string, List<TimeEntry>> LoadEntries()
+        {
+            if (!File.Exists(EntriesFile))
+                return new Dictionary<string, List<TimeEntry>>();
+            try
+            {
+                var json = File.ReadAllText(EntriesFile);
+                var data = JsonSerializer.Deserialize<Dictionary<string, List<TimeEntry>>>(json);
+                if (data == null) return new Dictionary<string, List<TimeEntry>>();
+
+                // Keep only last 3 months
+                var cutoff = DateTime.Today.AddMonths(-3);
+                return data
+                    .Where(kv => DateTime.TryParse(kv.Key, out var d) && d.Date >= cutoff)
+                    .ToDictionary(kv => kv.Key, kv => kv.Value);
+            }
+            catch { return new Dictionary<string, List<TimeEntry>>(); }
         }
     }
 }
