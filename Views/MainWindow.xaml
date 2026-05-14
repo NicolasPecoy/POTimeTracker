@@ -26,6 +26,7 @@
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu Background="#1C1F2E" BorderBrush="#2A2D3E" Foreground="#E8EAF0">
                     <MenuItem x:Name="menuOpen" Header="Abrir Widget" Click="MenuItem_Open_Click"/>
+                    <MenuItem x:Name="menuJira" Header="Abrir Jira" Click="MenuItem_Jira_Click"/>
                     <MenuItem x:Name="menuReload" Header="Recargar Proyectos" Click="MenuItem_Reload_Click"/>
                     <MenuItem x:Name="menuSettings" Header="Configuracion" Click="MenuItem_Settings_Click"/>
                     <Separator Background="#2A2D3E"/>
@@ -142,6 +143,19 @@
                                     <TextBlock Text="Online" Foreground="{StaticResource GreenBrush}" FontSize="11" FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Border>
+                            <Grid Margin="0,0,4,0">
+                                <Button x:Name="btnJira" Style="{StaticResource GhostButton}"
+                                        Content="J" Width="28" Height="28" Padding="0"
+                                        Click="BtnJira_Click" ToolTip="Abrir Jira"
+                                        FontSize="13" FontWeight="Bold"/>
+                                <Ellipse x:Name="JiraConnectedDot"
+                                         Width="8" Height="8"
+                                         Fill="{StaticResource GreenBrush}"
+                                         HorizontalAlignment="Right" VerticalAlignment="Top"
+                                         Margin="0,1,1,0"
+                                         Visibility="Collapsed"
+                                         IsHitTestVisible="False"/>
+                            </Grid>
                             <Button Style="{StaticResource GhostButton}" Content="&#9881;" Width="28" Height="28" Padding="0"
                                     Click="BtnSettings_Click" ToolTip="Configuracion" Margin="0,0,4,0" FontSize="14"/>
                             <Button Style="{StaticResource GhostButton}" Content="--" Width="28" Height="28" Padding="0"
@@ -277,11 +291,62 @@
                              Height="50" AcceptsReturn="True" TextWrapping="Wrap"
                              VerticalContentAlignment="Top" Margin="0,0,0,12"/>
 
+                    <!-- JIRA LINKING SECTION -->
+                    <Border x:Name="JiraLinkPanel" Background="{StaticResource BgBaseBrush}"
+                            CornerRadius="8" BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1" Padding="12,10" Margin="0,0,0,12">
+                        <StackPanel>
+                            <CheckBox x:Name="chkLogToJira"
+                                      Foreground="{StaticResource TextSecondaryBrush}"
+                                      FontSize="12" FontWeight="SemiBold"
+                                      Checked="ChkLogToJira_Changed"
+                                      Unchecked="ChkLogToJira_Changed">
+                                <CheckBox.Content>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border CornerRadius="3" Padding="4,1" Margin="4,0,0,0">
+                                            <Border.Background>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                    <GradientStop Color="#FF0052CC" Offset="0"/>
+                                                    <GradientStop Color="#FF2684FF" Offset="1"/>
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                            <TextBlock Text="J" FontWeight="Bold" FontSize="10" Foreground="White"/>
+                                        </Border>
+                                        <TextBlock Text=" Registrar tambien en Jira"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   FontSize="12"/>
+                                    </StackPanel>
+                                </CheckBox.Content>
+                            </CheckBox>
+
+                            <StackPanel x:Name="JiraIssueInput" Visibility="Collapsed" Margin="0,8,0,0">
+                                <TextBlock Text="CLAVE DEL ISSUE (ej: PROJ-123)" Style="{StaticResource LabelStyle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox x:Name="txtJiraIssueKey" Grid.Column="0"
+                                             Style="{StaticResource ModernTextBox}"
+                                             FontFamily="Consolas" FontSize="13"
+                                             CharacterCasing="Upper"
+                                             LostFocus="TxtJiraIssueKey_LostFocus"/>
+                                    <Border x:Name="JiraIssueStatus" Grid.Column="1"
+                                            CornerRadius="4" Padding="6,4" Margin="6,0,0,0"
+                                            VerticalAlignment="Center" Visibility="Collapsed">
+                                        <TextBlock x:Name="txtJiraIssueName" FontSize="11"
+                                                   MaxWidth="130" TextTrimming="CharacterEllipsis"/>
+                                    </Border>
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
                     <Button x:Name="btnSubmit" Style="{StaticResource AccentButton}"
                             Content="Registrar Horas" Click="BtnSubmit_Click" Height="40"/>
 
                     <TextBlock x:Name="txtStatus" FontSize="12" HorizontalAlignment="Center"
-                               Margin="0,8,0,0" Visibility="Collapsed"/>
+                               Margin="0,8,0,0" Visibility="Collapsed" TextWrapping="Wrap"/>
                 </StackPanel>
 
                 <!-- ENTRIES LIST -->
