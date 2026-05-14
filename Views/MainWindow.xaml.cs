@@ -14,12 +14,16 @@ using Hardcodet.Wpf.TaskbarNotification;
 using Microsoft.Win32;
 using POTimeTracker.Models;
 using POTimeTracker.Services;
+using System.Text.RegularExpressions;
 
 namespace POTimeTracker.Views
 {
     public partial class MainWindow : Window
     {
-        private readonly POApiService _api = new();
+        private readonly POApiService   _api  = new();
+        private readonly JiraApiService _jira = new();
+        private JiraWindow? _jiraWindow;
+
         private DateTime _currentDate = DateTime.Today;
         private double _weeklyTarget = 40;
         private List<POProject> _projects = new();
@@ -72,6 +76,8 @@ namespace POTimeTracker.Views
             LoadPersistedEntries();
             StartDailyReminderTimer();
             PositionAboveTray();
+
+            InitJira();
 
             var creds = CredentialService.LoadCredentials();
             if (creds != null && !string.IsNullOrEmpty(creds.Username))
@@ -188,6 +194,7 @@ namespace POTimeTracker.Views
                 txtServerDisplay.Text = _api.ServerUrl.Replace("http://", "").Replace("https://", "");
                 txtTargetHours.Text = _weeklyTarget.ToString("0.0");
 
+                InitJira();
                 await ReloadProjectsAsync();
                 RefreshAll();
                 UpdateLayout();
@@ -633,6 +640,28 @@ namespace POTimeTracker.Views
                 ShowStatusMessage($"{message} - guardado localmente", true);
             }
 
+            // Dual-log to Jira if enabled
+            var jiraKey = chkLogToJira.IsChecked == true ? txtJiraIssueKey.Text.Trim().ToUpperInvariant() : "";
+            if (!string.IsNullOrEmpty(jiraKey) && Regex.IsMatch(jiraKey, @"^[A-Z]+-\d+$"))
+            {
+                entry.JiraIssueKey = jiraKey;
+                if (!_jira.IsConnected)
+                {
+                    var (cfg, token) = JiraConfigService.LoadConfig();
+                    if (cfg != null && !string.IsNullOrEmpty(token))
+                    {
+                        _jira.Configure(cfg.BaseUrl, cfg.Email, token);
+                        await _jira.TestConnectionAsync();
+                    }
+                }
+                var (jiraOk, jiraMsg) = await _jira.LogWorkAsync(jiraKey, hours, _currentDate, txtNotes.Text.Trim());
+                entry.JiraSynced = jiraOk;
+                if (jiraOk)
+                    ShowStatusMessage($"PO + Jira ({jiraKey}): OK", false);
+                else
+                    ShowStatusMessage($"PO OK — Jira: {jiraMsg}", true);
+            }
+
             // Update local entry (merge or add)
             if (existingEntry != null)
             {
@@ -654,6 +683,11 @@ namespace POTimeTracker.Views
             btnSubmit.IsEnabled = true;
             txtNotes.Text = "";
             txtHours.Text = "1.0";
+            if (chkLogToJira.IsChecked == true)
+            {
+                txtJiraIssueKey.Text       = "";
+                JiraIssueStatus.Visibility = Visibility.Collapsed;
+            }
             RefreshAll();
         }
 
@@ -668,6 +702,129 @@ namespace POTimeTracker.Views
             txtStatus.Visibility = Visibility.Visible;
             await System.Threading.Tasks.Task.Delay(3000);
             txtStatus.Visibility = Visibility.Collapsed;
+        }
+
+        // ══════════════════════════════════════════════════
+        // JIRA INTEGRATION
+        // ══════════════════════════════════════════════════
+
+        private void InitJira()
+        {
+            var (config, token) = JiraConfigService.LoadConfig();
+            bool configured = config != null
+                && !string.IsNullOrWhiteSpace(config.BaseUrl)
+                && !string.IsNullOrWhiteSpace(token);
+
+            JiraLinkPanel.Visibility = configured ? Visibility.Visible : Visibility.Collapsed;
+
+            if (!configured) { UpdateJiraButtonState(false); return; }
+
+            _jira.Configure(config!.BaseUrl, config.Email, token);
+            _ = TryAutoConnectJiraAsync();
+        }
+
+        private async System.Threading.Tasks.Task TryAutoConnectJiraAsync()
+        {
+            var (ok, _, _) = await _jira.TestConnectionAsync();
+            UpdateJiraButtonState(ok);
+        }
+
+        private void UpdateJiraButtonState(bool connected)
+        {
+            JiraConnectedDot.Visibility = connected ? Visibility.Visible : Visibility.Collapsed;
+            btnJira.ToolTip = connected ? "Jira conectado" : "Abrir Jira";
+        }
+
+        private void BtnJira_Click(object sender, RoutedEventArgs e) => OpenJiraWindow();
+
+        private void MenuItem_Jira_Click(object sender, RoutedEventArgs e) => OpenJiraWindow();
+
+        private void OpenJiraWindow()
+        {
+            if (_jiraWindow == null || !_jiraWindow.IsLoaded)
+            {
+                _jiraWindow = new JiraWindow();
+                _jiraWindow.WindowHidden += (_, _) => ShowMainWindowAfterJira();
+                _jiraWindow.Closed       += (_, _) => { _jiraWindow = null; ShowMainWindowAfterJira(); };
+            }
+
+            Hide();
+            PositionWindowAboveTray(_jiraWindow);
+            _jiraWindow.Show();
+            _jiraWindow.Activate();
+        }
+
+        private void ShowMainWindowAfterJira()
+        {
+            // Re-check Jira connection state when returning
+            UpdateJiraButtonState(_jira.IsConnected);
+            InitJira(); // refresh panel visibility and re-connect if needed
+
+            _suppressAutoHide = true;
+            Show();
+            PositionAboveTray();
+            Activate();
+            PlayFadeIn();
+            _ = System.Threading.Tasks.Task.Delay(500).ContinueWith(
+                _ => Dispatcher.Invoke(() => _suppressAutoHide = false));
+        }
+
+        private static void PositionWindowAboveTray(Window win)
+        {
+            win.UpdateLayout();
+            var wa = SystemParameters.WorkArea;
+            double h = win.ActualHeight > 50 ? win.ActualHeight : 750;
+            win.Left = Math.Max(wa.Left, wa.Right - win.Width - 10);
+            win.Top  = Math.Max(wa.Top,  wa.Bottom - h - 10);
+        }
+
+        private void ChkLogToJira_Changed(object sender, RoutedEventArgs e)
+        {
+            JiraIssueInput.Visibility = chkLogToJira.IsChecked == true
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+            if (chkLogToJira.IsChecked == false)
+            {
+                txtJiraIssueKey.Text       = "";
+                JiraIssueStatus.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private async void TxtJiraIssueKey_LostFocus(object sender, RoutedEventArgs e)
+        {
+            var key = txtJiraIssueKey.Text.Trim().ToUpperInvariant();
+            if (string.IsNullOrWhiteSpace(key) || !Regex.IsMatch(key, @"^[A-Z]+-\d+$"))
+            {
+                JiraIssueStatus.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (!_jira.IsConnected)
+            {
+                var (cfg, token) = JiraConfigService.LoadConfig();
+                if (cfg != null && !string.IsNullOrEmpty(token))
+                {
+                    _jira.Configure(cfg.BaseUrl, cfg.Email, token);
+                    await _jira.TestConnectionAsync();
+                }
+            }
+
+            var issue = await _jira.GetIssueAsync(key);
+            if (issue != null)
+            {
+                JiraIssueStatus.Visibility  = Visibility.Visible;
+                JiraIssueStatus.Background  = new SolidColorBrush(Color.FromArgb(40, 52, 211, 153));
+                txtJiraIssueName.Text       = issue.Summary;
+                txtJiraIssueName.Foreground = GreenBrushCached;
+            }
+            else
+            {
+                JiraIssueStatus.Visibility  = Visibility.Visible;
+                JiraIssueStatus.Background  = new SolidColorBrush(Color.FromArgb(40, 248, 113, 113));
+                txtJiraIssueName.Text       = "Issue no encontrado";
+                txtJiraIssueName.Foreground = RedBrushCached;
+            }
         }
 
         // ══════════════════════════════════════════════════
@@ -876,6 +1033,8 @@ namespace POTimeTracker.Views
         {
             _notifyIcon?.Dispose();
             _api.Dispose();
+            _jira.Dispose();
+            _jiraWindow?.Close();
             Application.Current.Shutdown();
         }
 

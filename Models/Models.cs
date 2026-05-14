@@ -48,6 +48,11 @@ namespace POTimeTracker.Models
         public double Hours { get; set; }
         public string Notes { get; set; } = "";
         public bool Synced { get; set; }
+
+        /// <summary>Optional Jira issue key linked to this entry (e.g. "PROJ-123").</summary>
+        public string JiraIssueKey { get; set; } = "";
+        /// <summary>True if hours were also logged to Jira.</summary>
+        public bool JiraSynced { get; set; }
     }
 
     public class LoginCredentials
