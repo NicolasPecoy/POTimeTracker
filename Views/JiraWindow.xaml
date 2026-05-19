@@ -175,7 +175,9 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="8"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="4"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="4"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
 
@@ -191,9 +193,31 @@
                                  GotFocus="TxtSearch_GotFocus"
                                  LostFocus="TxtSearch_LostFocus"
                                  KeyDown="TxtSearch_KeyDown"
+                                 TextChanged="TxtSearch_TextChanged"
                                  ToolTip="Escribe una clave de issue (ej: PROJ-123) o texto"/>
 
-                        <Button Grid.Column="4" Style="{StaticResource NavButton}"
+                        <!-- Filter button -->
+                        <Button x:Name="btnFilter" Grid.Column="4"
+                                Style="{StaticResource NavButton}"
+                                Padding="0"
+                                Click="BtnFilter_Click" ToolTip="Filtrar por estado">
+                            <Grid>
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <Rectangle Height="2" Width="12" RadiusX="1" RadiusY="1"
+                                               Fill="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2.5"/>
+                                    <Rectangle Height="2" Width="8"  RadiusX="1" RadiusY="1"
+                                               Fill="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2.5"/>
+                                    <Rectangle Height="2" Width="4"  RadiusX="1" RadiusY="1"
+                                               Fill="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                                <Ellipse x:Name="FilterActiveDot" Width="7" Height="7"
+                                         Fill="{StaticResource AccentBrush}"
+                                         HorizontalAlignment="Right" VerticalAlignment="Top"
+                                         Margin="0,1,1,0" Visibility="Collapsed"/>
+                            </Grid>
+                        </Button>
+
+                        <Button Grid.Column="6" Style="{StaticResource NavButton}"
                                 Content="↺" FontSize="14" Click="BtnRefresh_Click" ToolTip="Recargar issues"/>
                     </Grid>
                 </Border>
@@ -328,6 +352,20 @@
                     <TextBlock x:Name="txtStatus" FontSize="12" HorizontalAlignment="Center"
                                Margin="0,8,0,0" Visibility="Collapsed" TextWrapping="Wrap"/>
                 </StackPanel>
+
+                <!-- FILTER POPUP -->
+                <Popup x:Name="FilterPopup"
+                       Placement="Bottom" VerticalOffset="2"
+                       StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+                    <Border Background="{StaticResource BgElevatedBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="4" MinWidth="170">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.6" Color="Black"/>
+                        </Border.Effect>
+                        <StackPanel x:Name="FilterOptionsPanel"/>
+                    </Border>
+                </Popup>
 
                 <!-- FOOTER -->
                 <Border Background="{StaticResource BgBaseBrush}" BorderBrush="{StaticResource BorderBrush}"
