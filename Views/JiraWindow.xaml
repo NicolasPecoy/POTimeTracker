@@ -75,6 +75,31 @@
                     <TextBox x:Name="txtDefaultProject" Style="{StaticResource ModernTextBox}"
                              Margin="0,0,0,18"/>
 
+                    <!-- Debug proxy toggle -->
+                    <Border Background="{StaticResource BgElevatedBrush}" CornerRadius="6"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            Padding="10,7" Margin="0,0,0,14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="PROXY DE DEBUG" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock x:Name="txtProxyUrl" Text="http://localhost:8888"
+                                           FontSize="11" FontFamily="Consolas"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <CheckBox x:Name="chkProxy" Grid.Column="1"
+                                      VerticalAlignment="Center"
+                                      ToolTip="Enrutar trafico por Fiddler / Charles en :8888"
+                                      Checked="ChkProxy_Changed"
+                                      Unchecked="ChkProxy_Changed"/>
+                        </Grid>
+                    </Border>
+
                     <Button x:Name="btnConnect" Style="{StaticResource AccentButton}"
                             Content="Conectar a Jira" Click="BtnConnect_Click" Height="42"/>
 

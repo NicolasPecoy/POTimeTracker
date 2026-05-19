@@ -1,0 +1,3 @@
+Cuando se haga click en Registrar tambien en gira, las horas que estan por ser registradas en el PO deben poder dividirse en distitnas tareas en temmpo de JIRA
+
+Agregar pequeño scroll en las horas registradas para poder visualizar todo

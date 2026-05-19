@@ -362,7 +362,8 @@
                             </Grid>
                         </Border>
 
-                        <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer x:Name="EntriesScrollViewer"
+                                      VerticalScrollBarVisibility="Auto">
                             <StackPanel x:Name="EntriesPanel"/>
                         </ScrollViewer>
 

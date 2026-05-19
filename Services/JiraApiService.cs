@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -11,26 +12,88 @@ namespace POTimeTracker.Services
 {
     public class JiraApiService : IDisposable
     {
-        private readonly HttpClient _client;
-        private string _baseUrl = "";
+        private HttpClient _client;
+        private string _baseUrl  = "";
+        private string _lastCredentials = "";   // cached for proxy toggle
 
         public string? CurrentUser { get; private set; }
         public bool IsConnected => !string.IsNullOrEmpty(_baseUrl) && CurrentUser != null;
+        public bool ProxyEnabled { get; private set; }
 
         public JiraApiService()
         {
-            _client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
-            _client.DefaultRequestHeaders.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/json"));
+            _client = BuildClient(proxyUrl: null);
         }
+
+        // ═══════════════════════════════════════════════════════════
+        // PROXY (for Fiddler / Charles / mitmproxy)
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>Route all traffic through the given proxy (e.g. http://localhost:8888 for Fiddler).</summary>
+        public void EnableProxy(string proxyUrl = "http://localhost:8888")
+        {
+            RebuildClient(proxyUrl);
+            ProxyEnabled = true;
+            LogService.Info($"JiraApiService: proxy habilitado en {proxyUrl}");
+        }
+
+        public void DisableProxy()
+        {
+            RebuildClient(proxyUrl: null);
+            ProxyEnabled = false;
+            LogService.Info("JiraApiService: proxy deshabilitado");
+        }
+
+        private void RebuildClient(string? proxyUrl)
+        {
+            var old = _client;
+            _client = BuildClient(proxyUrl);
+
+            // Re-apply auth header if we already had credentials
+            if (!string.IsNullOrEmpty(_lastCredentials))
+                _client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Basic", _lastCredentials);
+
+            // Re-apply base URL (no-op if not yet configured)
+            old.Dispose();
+        }
+
+        private static HttpClient BuildClient(string? proxyUrl)
+        {
+            HttpClientHandler handler;
+
+            if (!string.IsNullOrEmpty(proxyUrl))
+            {
+                handler = new HttpClientHandler
+                {
+                    Proxy    = new WebProxy(proxyUrl) { BypassProxyOnLocal = false },
+                    UseProxy = true,
+                    // Trust Fiddler's self-signed root certificate
+                    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+                };
+            }
+            else
+            {
+                handler = new HttpClientHandler { UseProxy = false };
+            }
+
+            var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
+            client.DefaultRequestHeaders.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/json"));
+            return client;
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // CONFIGURE
+        // ═══════════════════════════════════════════════════════════
 
         public void Configure(string baseUrl, string email, string apiToken)
         {
             _baseUrl = baseUrl.Trim().TrimEnd('/');
-            var credentials = Convert.ToBase64String(
+            _lastCredentials = Convert.ToBase64String(
                 Encoding.UTF8.GetBytes($"{email.Trim()}:{apiToken.Trim()}"));
             _client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Basic", credentials);
+                new AuthenticationHeaderValue("Basic", _lastCredentials);
         }
 
         // ═══════════════════════════════════════════════════════════
