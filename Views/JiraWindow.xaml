@@ -52,7 +52,7 @@
                                        Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Jira Integration" Style="{StaticResource HeaderTitle}" FontSize="18"/>
+                            <TextBlock Text="Jira" Style="{StaticResource HeaderTitle}" FontSize="18"/>
                             <TextBlock Text="Configurar conexion" Style="{StaticResource HeaderSubtitle}"/>
                         </StackPanel>
                     </StackPanel>
@@ -145,7 +145,7 @@
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Jira Integration" Style="{StaticResource HeaderTitle}"/>
+                                <TextBlock Text="Jira" Style="{StaticResource HeaderTitle}"/>
                                 <TextBlock x:Name="txtUserDisplay" Text="usuario" Style="{StaticResource HeaderSubtitle}"/>
                             </StackPanel>
                         </StackPanel>
@@ -211,7 +211,8 @@
                             </Grid>
                         </Border>
 
-                        <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer x:Name="IssuesScrollViewer"
+                                      VerticalScrollBarVisibility="Auto">
                             <StackPanel x:Name="IssuesPanel"/>
                         </ScrollViewer>
 
@@ -288,21 +289,30 @@
                         <Button Style="{StaticResource QuickHourButton}" Content="8.0" Click="QuickHour_Click" Tag="8"   Margin="2,0"/>
                     </UniformGrid>
 
-                    <!-- Date picker -->
+                    <!-- Date navigation -->
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="FECHA" Style="{StaticResource LabelStyle}"
                                    VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <DatePicker x:Name="dtPicker" Grid.Column="1"
-                                    Background="{StaticResource BgInputBrush}"
-                                    Foreground="{StaticResource TextPrimaryBrush}"
-                                    BorderBrush="{StaticResource BorderBrush}"
-                                    FontSize="13"/>
-                        <Button Grid.Column="2" Style="{StaticResource GhostButton}"
+                        <Button Grid.Column="1" Style="{StaticResource NavButton}" Content="&lt;"
+                                Click="BtnDatePrev_Click"/>
+                        <Border Grid.Column="2" Background="{StaticResource BgInputBrush}"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                CornerRadius="8" Margin="4,0">
+                            <TextBlock x:Name="txtSelectedDate" FontSize="13" FontFamily="Consolas"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Padding="8,6"/>
+                        </Border>
+                        <Button Grid.Column="3" Style="{StaticResource NavButton}" Content="&gt;"
+                                Click="BtnDateNext_Click"/>
+                        <Button Grid.Column="4" Style="{StaticResource GhostButton}"
                                 Content="Hoy" FontSize="11" FontWeight="SemiBold"
                                 Padding="10,4" Click="BtnDateToday_Click" Margin="6,0,0,0"/>
                     </Grid>

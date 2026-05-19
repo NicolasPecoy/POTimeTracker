@@ -17,6 +17,7 @@ namespace POTimeTracker.Views
         private List<JiraProject> _projects = new();
         private List<JiraIssue>   _issues   = new();
         private JiraIssue?        _selectedIssue;
+        private DateTime          _selectedDate = DateTime.Today;
 
         /// <summary>Fired when the window hides itself (minimize button or deactivation).</summary>
         public event EventHandler? WindowHidden;
@@ -44,7 +45,8 @@ namespace POTimeTracker.Views
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            dtPicker.SelectedDate = DateTime.Today;
+            _selectedDate = DateTime.Today;
+            UpdateDateDisplay();
             PositionAboveTray();
 
             var (config, token) = JiraConfigService.LoadConfig();
@@ -91,6 +93,12 @@ namespace POTimeTracker.Views
             Left = Math.Max(wa.Left, wa.Right - Width - 10);
             Top  = Math.Max(wa.Top,  wa.Bottom - h - 10);
         }
+
+        private void UpdateDateDisplay() =>
+            txtSelectedDate.Text = _selectedDate.ToString("dd/MM/yyyy");
+
+        private void RePositionAsync() =>
+            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
 
         private async System.Threading.Tasks.Task SwitchToMainViewAsync(JiraConfig config, string user)
         {
@@ -211,9 +219,12 @@ namespace POTimeTracker.Views
             IssuesPanel.Children.Clear();
             txtIssueCount.Text        = _issues.Count.ToString();
             txtIssuesEmpty.Visibility = _issues.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            IssuesScrollViewer.Height = _issues.Count > 3 ? 162 : double.NaN;
 
             foreach (var issue in _issues)
                 IssuesPanel.Children.Add(BuildIssueItem(issue));
+
+            RePositionAsync();
         }
 
         private Border BuildIssueItem(JiraIssue issue)
@@ -305,6 +316,7 @@ namespace POTimeTracker.Views
             txtSelectedStatus.Foreground = GetStatusBrush(issue.StatusCategory);
 
             IssuDetailPanel.Visibility = Visibility.Visible;
+            RePositionAsync();
         }
 
         // ══════════════════════════════════════════════════
@@ -364,7 +376,7 @@ namespace POTimeTracker.Views
                 return;
             }
 
-            var date = dtPicker.SelectedDate ?? DateTime.Today;
+            var date = _selectedDate;
 
             btnSubmit.IsEnabled = false;
             btnSubmit.Content   = "Enviando...";
@@ -416,8 +428,23 @@ namespace POTimeTracker.Views
                                       .ToString("0.0", CultureInfo.CurrentCulture);
         }
 
-        private void BtnDateToday_Click(object sender, RoutedEventArgs e) =>
-            dtPicker.SelectedDate = DateTime.Today;
+        private void BtnDatePrev_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedDate = _selectedDate.AddDays(-1);
+            UpdateDateDisplay();
+        }
+
+        private void BtnDateNext_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedDate = _selectedDate.AddDays(1);
+            UpdateDateDisplay();
+        }
+
+        private void BtnDateToday_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedDate = DateTime.Today;
+            UpdateDateDisplay();
+        }
 
         // ══════════════════════════════════════════════════
         // NAVIGATION
@@ -493,6 +520,7 @@ namespace POTimeTracker.Views
         {
             IssuesLoading.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
             if (show) txtIssuesEmpty.Visibility = Visibility.Collapsed;
+            RePositionAsync();
         }
 
         private async void ShowStatusMessage(string msg, bool isError)
@@ -500,8 +528,10 @@ namespace POTimeTracker.Views
             txtStatus.Text       = msg;
             txtStatus.Foreground = isError ? RedBrush : GreenBrush;
             txtStatus.Visibility = Visibility.Visible;
+            RePositionAsync();
             await System.Threading.Tasks.Task.Delay(3500);
             if (IsLoaded) txtStatus.Visibility = Visibility.Collapsed;
+            RePositionAsync();
         }
 
         private static bool TryParseHours(string text, out double hours)

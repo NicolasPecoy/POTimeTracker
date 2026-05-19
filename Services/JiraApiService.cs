@@ -177,7 +177,7 @@ namespace POTimeTracker.Services
         {
             try
             {
-                var url = $"{_baseUrl}/rest/api/3/search"
+                var url = $"{_baseUrl}/rest/api/3/search/jql"
                         + $"?jql={Uri.EscapeDataString(jql)}"
                         + $"&maxResults={maxResults}"
                         + "&fields=summary,status,issuetype,assignee";
