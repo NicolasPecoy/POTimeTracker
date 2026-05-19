@@ -162,6 +162,15 @@ namespace POTimeTracker.Views
                 ShowConfigError("Ingresa tu API Token de Atlassian");
                 return;
             }
+            if (IsDoubleEncodedToken(token))
+            {
+                ShowConfigError(
+                    "El token parece estar en formato incorrecto (Base64 pre-codificado).\n\n" +
+                    "El API Token debe copiarse directamente desde:\n" +
+                    "id.atlassian.com → Seguridad → API tokens → Crear token\n\n" +
+                    "El token debe verse como: ATATTxxx... o similar (sin espacios ni '==' al inicio).");
+                return;
+            }
 
             btnConnect.IsEnabled = false;
             ShowConfigLoading(true);
@@ -426,6 +435,14 @@ namespace POTimeTracker.Views
             await LoadIssuesAsync();
         }
 
+        private void ChkProxy_Changed(object sender, RoutedEventArgs e)
+        {
+            if (chkProxy.IsChecked == true)
+                _jira.EnableProxy("http://localhost:8888");
+            else
+                _jira.DisableProxy();
+        }
+
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
             _jira.Disconnect();
@@ -441,6 +458,9 @@ namespace POTimeTracker.Views
             }
             if (!string.IsNullOrEmpty(token))
                 txtApiToken.Password = token;
+
+            // Reflect current proxy state in checkbox
+            chkProxy.IsChecked = _jira.ProxyEnabled;
         }
 
         private void BtnMinimize_Click(object sender, RoutedEventArgs e)
@@ -489,6 +509,28 @@ namespace POTimeTracker.Views
             return double.TryParse(text.Trim().Replace(',', '.'),
                 NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
                 CultureInfo.InvariantCulture, out hours);
+        }
+
+        // Detects if the user pasted already-base64-encoded credentials (email:token)
+        // instead of the raw API token. This causes double-encoding and a 401 from Jira.
+        private static bool IsDoubleEncodedToken(string token)
+        {
+            // Strip "Basic " prefix if accidentally included
+            var raw = token.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase)
+                ? token[6..].Trim()
+                : token;
+
+            try
+            {
+                var decoded = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(raw));
+                // If decoding yields something with an @ followed by a colon it's credentials, not a token
+                var atIdx = decoded.IndexOf('@');
+                return atIdx > 0 && decoded.IndexOf(':', atIdx) > atIdx;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static SolidColorBrush GetStatusBrush(string category) => category switch

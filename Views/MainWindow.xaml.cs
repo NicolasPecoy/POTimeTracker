@@ -25,6 +25,7 @@ namespace POTimeTracker.Views
         private JiraWindow? _jiraWindow;
 
         private DateTime _currentDate = DateTime.Today;
+        private DateTime _projectsLoadedForDate = DateTime.MinValue;
         private double _weeklyTarget = 40;
         private List<POProject> _projects = new();
         private readonly Dictionary<string, List<TimeEntry>> _entries = new();
@@ -229,6 +230,7 @@ namespace POTimeTracker.Views
             var showAllTasks = chkShowAllTasks.IsChecked == true;
 
             _projects = await _api.GetProjectsAsync(_currentDate, showAllTasks);
+            _projectsLoadedForDate = _currentDate;
 
             // If empty and we think we're logged in, the session likely expired on the server.
             // Try to re-authenticate silently and retry once.
@@ -283,6 +285,7 @@ namespace POTimeTracker.Views
             BuildWeekStrip();
             BuildEntries();
             UpdateSummary();
+            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         // ══════════════════════════════════════════════════
@@ -402,6 +405,7 @@ namespace POTimeTracker.Views
 
             txtEntryCount.Text = dayEntries.Count.ToString();
             txtEmptyState.Visibility = dayEntries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            EntriesScrollViewer.Height = dayEntries.Count > 2 ? 112 : double.NaN;
 
             foreach (var entry in dayEntries)
             {
@@ -597,12 +601,19 @@ namespace POTimeTracker.Views
             var existingEntry = _entries[key].FirstOrDefault(x =>
                 x.ProjectId == project.Id && x.TaskId == task.Id);
 
-            // Calculate total hours to submit (add to existing instead of overwrite)
+            // Accumulate only within the same day from local cache.
+            // ExistingHours from the API is only reliable when projects were loaded for this exact date.
             double totalHours = hours;
             if (existingEntry != null)
                 totalHours = existingEntry.Hours + hours;
-            else if (task.ExistingHours > 0)
+            else if (task.ExistingHours > 0 && _currentDate.Date == _projectsLoadedForDate.Date)
                 totalHours = task.ExistingHours + hours;
+
+            // Combine notes before creating entry so the API receives the full text.
+            var newNotes = txtNotes.Text.Trim();
+            var combinedNotes = existingEntry != null && !string.IsNullOrEmpty(existingEntry.Notes) && !string.IsNullOrEmpty(newNotes)
+                ? existingEntry.Notes + " - " + newNotes
+                : !string.IsNullOrEmpty(newNotes) ? newNotes : existingEntry?.Notes ?? "";
 
             var entry = new TimeEntry
             {
@@ -615,7 +626,7 @@ namespace POTimeTracker.Views
                 GxTaskRowId = task.GxRowId,
                 GxProjectRowId = task.GxProjectRowId,
                 Hours = totalHours,
-                Notes = txtNotes.Text.Trim()
+                Notes = combinedNotes
             };
 
             btnSubmit.IsEnabled = false;
@@ -666,8 +677,7 @@ namespace POTimeTracker.Views
             if (existingEntry != null)
             {
                 existingEntry.Hours = totalHours;
-                if (!string.IsNullOrEmpty(entry.Notes))
-                    existingEntry.Notes = entry.Notes;
+                existingEntry.Notes = entry.Notes;
                 existingEntry.Synced = entry.Synced;
             }
             else
@@ -700,8 +710,10 @@ namespace POTimeTracker.Views
             txtStatus.Text = msg;
             txtStatus.Foreground = isError ? RedBrushCached : GreenBrushCached;
             txtStatus.Visibility = Visibility.Visible;
+            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
             await System.Threading.Tasks.Task.Delay(3000);
             txtStatus.Visibility = Visibility.Collapsed;
+            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         // ══════════════════════════════════════════════════
@@ -789,6 +801,8 @@ namespace POTimeTracker.Views
                 txtJiraIssueKey.Text       = "";
                 JiraIssueStatus.Visibility = Visibility.Collapsed;
             }
+
+            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         private async void TxtJiraIssueKey_LostFocus(object sender, RoutedEventArgs e)
