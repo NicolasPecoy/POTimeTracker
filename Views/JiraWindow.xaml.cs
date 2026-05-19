@@ -2,10 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using POTimeTracker.Models;
 using POTimeTracker.Services;
 
@@ -14,10 +18,13 @@ namespace POTimeTracker.Views
     public partial class JiraWindow : Window
     {
         private readonly JiraApiService _jira = new();
-        private List<JiraProject> _projects = new();
-        private List<JiraIssue>   _issues   = new();
+        private List<JiraProject> _projects   = new();
+        private List<JiraIssue>   _allIssues  = new();
+        private List<JiraIssue>   _issues     = new();
         private JiraIssue?        _selectedIssue;
         private DateTime          _selectedDate = DateTime.Today;
+        private HashSet<string>   _activeStatusFilters = new();
+        private CancellationTokenSource? _searchCts;
 
         /// <summary>Fired when the window hides itself (minimize button or deactivation).</summary>
         public event EventHandler? WindowHidden;
@@ -139,7 +146,8 @@ namespace POTimeTracker.Views
             var selectedProject = cboProject.SelectedItem as JiraProject;
             var projectKey      = selectedProject?.Id == "" ? "" : selectedProject?.Key ?? "";
 
-            _issues = await _jira.GetMyIssuesAsync(projectKey);
+            _allIssues = await _jira.GetMyIssuesAsync(projectKey);
+            _issues    = new List<JiraIssue>(_allIssues);
             BuildIssuesList();
             ShowIssuesLoading(false);
         }
@@ -333,30 +341,60 @@ namespace POTimeTracker.Views
             if (string.IsNullOrWhiteSpace(txtSearch.Text)) txtSearch.Text = "Buscar issue...";
         }
 
+        private void ApplyFilters()
+        {
+            var query = txtSearch.Text == "Buscar issue..." ? "" : txtSearch.Text.Trim().ToLower();
+
+            var filtered = _allIssues.AsEnumerable();
+            if (!string.IsNullOrEmpty(query))
+                filtered = filtered.Where(i =>
+                    i.Key.ToLower().Contains(query) ||
+                    i.Summary.ToLower().Contains(query));
+
+            if (_activeStatusFilters.Count > 0)
+                filtered = filtered.Where(i => _activeStatusFilters.Contains(i.Status));
+
+            _issues = filtered.ToList();
+            BuildIssuesList();
+        }
+
+        private async void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (txtSearch.Text == "Buscar issue...") return;
+
+            _searchCts?.Cancel();
+            _searchCts = new CancellationTokenSource();
+            var cts = _searchCts;
+            try { await Task.Delay(300, cts.Token); }
+            catch (TaskCanceledException) { return; }
+
+            ApplyFilters();
+        }
+
         private async void TxtSearch_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key != Key.Enter) return;
             var query = txtSearch.Text.Trim();
             if (string.IsNullOrWhiteSpace(query) || query == "Buscar issue...") return;
 
+            _searchCts?.Cancel();
             ShowIssuesLoading(true);
-            IssuesPanel.Children.Clear();
             _selectedIssue             = null;
             IssuDetailPanel.Visibility = Visibility.Collapsed;
 
             if (System.Text.RegularExpressions.Regex.IsMatch(query, @"^[A-Za-z]+-\d+$"))
             {
                 var issue = await _jira.GetIssueAsync(query);
-                _issues = issue != null ? new List<JiraIssue> { issue } : new();
+                _allIssues = issue != null ? new List<JiraIssue> { issue } : new();
             }
             else
             {
                 var jql = $"text ~ \"{query}\" AND assignee = currentUser() ORDER BY updated DESC";
-                _issues = await _jira.SearchIssuesAsync(jql, 30);
+                _allIssues = await _jira.SearchIssuesAsync(jql, 30);
             }
 
-            BuildIssuesList();
             ShowIssuesLoading(false);
+            ApplyFilters();
         }
 
         // ══════════════════════════════════════════════════
@@ -459,7 +497,61 @@ namespace POTimeTracker.Views
         private async void BtnRefresh_Click(object sender, RoutedEventArgs e)
         {
             txtSearch.Text = "Buscar issue...";
+            _activeStatusFilters.Clear();
+            FilterActiveDot.Visibility = Visibility.Collapsed;
             await LoadIssuesAsync();
+        }
+
+        private void BtnFilter_Click(object sender, RoutedEventArgs e)
+        {
+            if (FilterPopup.IsOpen) { FilterPopup.IsOpen = false; return; }
+
+            FilterOptionsPanel.Children.Clear();
+
+            FilterOptionsPanel.Children.Add(new TextBlock
+            {
+                Text = "FILTRAR POR ESTADO",
+                FontSize = 10, FontWeight = FontWeights.SemiBold,
+                Foreground = TextMuted, Margin = new Thickness(8, 6, 8, 6)
+            });
+
+            var statuses = _allIssues.Select(i => i.Status).Distinct().OrderBy(s => s).ToList();
+            foreach (var status in statuses)
+            {
+                var isChecked = _activeStatusFilters.Count == 0 || _activeStatusFilters.Contains(status);
+                var cb = new CheckBox
+                {
+                    Content = status, Tag = status,
+                    IsChecked = isChecked,
+                    Foreground = TextPrimary, FontSize = 12,
+                    Margin = new Thickness(8, 3, 12, 3)
+                };
+                cb.Checked   += FilterOption_Changed;
+                cb.Unchecked += FilterOption_Changed;
+                FilterOptionsPanel.Children.Add(cb);
+            }
+
+            FilterPopup.PlacementTarget = btnFilter;
+            FilterPopup.IsOpen = true;
+        }
+
+        private void FilterOption_Changed(object sender, RoutedEventArgs e)
+        {
+            var allStatuses = _allIssues.Select(i => i.Status).Distinct().ToHashSet();
+
+            _activeStatusFilters = FilterOptionsPanel.Children.OfType<CheckBox>()
+                .Where(cb => cb.IsChecked == true && cb.Tag is string)
+                .Select(cb => (string)cb.Tag!)
+                .ToHashSet();
+
+            // All checked = no filter
+            if (_activeStatusFilters.SetEquals(allStatuses))
+                _activeStatusFilters.Clear();
+
+            FilterActiveDot.Visibility = _activeStatusFilters.Count > 0
+                ? Visibility.Visible : Visibility.Collapsed;
+
+            ApplyFilters();
         }
 
         private void ChkProxy_Changed(object sender, RoutedEventArgs e)
