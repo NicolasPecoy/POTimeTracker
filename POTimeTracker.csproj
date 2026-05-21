@@ -21,6 +21,7 @@
   <ItemGroup>
     <Resource Include="Assets\icon.ico" />
     <Content Include="Assets\*.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include=".env" Condition="Exists('.env')" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Exclude the Avalonia sample project folder from the original WPF project compilation -->

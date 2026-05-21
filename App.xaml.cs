@@ -9,6 +9,7 @@ namespace POTimeTracker
     {
         protected override void OnStartup(StartupEventArgs e)
         {
+            Services.EnvLoader.Load();
             base.OnStartup(e);
 
             DispatcherUnhandledException += (_, ex) =>

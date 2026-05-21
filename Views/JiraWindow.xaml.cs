@@ -17,9 +17,9 @@ namespace POTimeTracker.Views
 {
     public partial class JiraWindow : Window
     {
-        private const string DefaultBaseUrl = "https://invenzis.atlassian.net";
-        private const string DefaultEmail   = "jira.admin@invenzis.com";
-        private const string DefaultToken   = "ATATT3xFfGF09wyvPdb_olxbSGTqJNDZV4d8rEm0j4YA7r5YAUGt7RYX9hqZ0vPI94IjjS80ukmqsEPiHGeHcIcXPayp21gVPw-kDyWFy6JGYpRkHReXOnOo75Np6bIk6abwNKY-QoWIci0zTe5TTFn8Qy7ejTiWDALxon_tPZ7VP-rFrIvOvdA=113E653B";
+        private static string DefaultBaseUrl => Environment.GetEnvironmentVariable("JIRA_BASE_URL") ?? "";
+        private static string DefaultEmail   => Environment.GetEnvironmentVariable("JIRA_EMAIL")    ?? "";
+        private static string DefaultToken   => Environment.GetEnvironmentVariable("JIRA_TOKEN")    ?? "";
 
         private readonly JiraApiService _jira = new();
         private List<JiraProject> _projects   = new();

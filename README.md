@@ -68,6 +68,31 @@ El `.exe` se genera en `bin/Release/net8.0-windows/win-x64/publish/`
 
 ## Configuración
 
+### Variables de entorno (`.env`)
+
+Las credenciales de conexión a Jira se cargan desde un archivo `.env` en la raíz del proyecto (o junto al `.exe` en producción). Este archivo **nunca se sube a Git**.
+
+**Pasos para configurar:**
+```bash
+# 1. Copiar el archivo de ejemplo
+cp .env.example .env
+
+# 2. Editar .env con los valores reales
+notepad .env
+```
+
+Contenido de `.env`:
+```env
+JIRA_BASE_URL=https://tu-empresa.atlassian.net
+JIRA_EMAIL=tu-email@empresa.com
+JIRA_TOKEN=tu_api_token_de_atlassian
+```
+
+> El API token se genera en [Atlassian Account → Security → API tokens](https://id.atlassian.com/manage-profile/security/api-tokens).  
+> Si no existe el `.env`, los campos de configuración aparecen vacíos y el usuario los completa manualmente en la UI.
+
+---
+
 ### PO Time Tracker — Primera ejecución
 1. Ejecutar `POTimeTracker.exe`
 2. Ingresar en la ventana de login:
