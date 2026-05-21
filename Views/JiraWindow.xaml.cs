@@ -95,6 +95,10 @@ namespace POTimeTracker.Views
 
             ConfigView.Visibility = Visibility.Visible;
             MainView.Visibility   = Visibility.Collapsed;
+            ShowConfigLoading(false);
+            HideConfigError();
+            btnConnect.IsEnabled = true;
+            btnConnect.Content   = "Conectar a Jira";
             RePositionAsync();
         }
 
@@ -731,6 +735,12 @@ namespace POTimeTracker.Views
             _jira.Disconnect();
             ConfigView.Visibility = Visibility.Visible;
             MainView.Visibility   = Visibility.Collapsed;
+
+            // Always reset form state so previous loading/error states don't persist
+            ShowConfigLoading(false);
+            HideConfigError();
+            btnConnect.IsEnabled = true;
+            btnConnect.Content   = "Conectar a Jira";
 
             var (config, token) = JiraConfigService.LoadConfig();
             txtBaseUrl.Text        = !string.IsNullOrWhiteSpace(config?.BaseUrl) ? config!.BaseUrl : DefaultBaseUrl;
