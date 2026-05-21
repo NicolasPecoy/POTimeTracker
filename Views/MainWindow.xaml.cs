@@ -634,14 +634,13 @@ namespace POTimeTracker.Views
             btnSubmit.IsEnabled = false;
             btnSubmit.Content = "Enviando...";
 
-            var (success, message) = await _api.SubmitTimeEntryAsync(entry, chkShowAllTasks.IsChecked == true);
+            var (poSuccess, poMessage) = await _api.SubmitTimeEntryAsync(entry, chkShowAllTasks.IsChecked == true);
 
-            if (success)
+            if (poSuccess)
             {
                 entry.Synced = true;
                 btnSubmit.Content = "Registrado!";
                 btnSubmit.Background = GreenBrushCached;
-                ShowStatusMessage(message, false);
                 _notifyIcon?.ShowBalloonTip("Horas registradas",
                     $"{totalHours:0.0}h - {project.Name}", BalloonIcon.Info);
             }
@@ -650,10 +649,12 @@ namespace POTimeTracker.Views
                 entry.Synced = false;
                 btnSubmit.Content = "Guardado local";
                 btnSubmit.Background = AmberBrushCached;
-                ShowStatusMessage($"{message} - guardado localmente", true);
             }
 
-            // Dual-log to Jira if enabled
+            // Dual-log to Jira + build combined status message
+            string finalMsg;
+            bool   finalIsError;
+
             if (chkLogToJira.IsChecked == true && _jiraSelectedIssues.Count > 0)
             {
                 if (!_jira.IsConnected)
@@ -679,13 +680,34 @@ namespace POTimeTracker.Views
                 entry.JiraIssueKey = string.Join(", ", jiraOkKeys);
                 entry.JiraSynced   = jiraErrMsgs.Count == 0;
 
-                if (jiraErrMsgs.Count == 0)
-                    ShowStatusMessage($"PO + Jira ({string.Join(", ", jiraOkKeys)}): OK", false);
-                else if (jiraOkKeys.Count > 0)
-                    ShowStatusMessage($"PO OK — Jira parcial: {string.Join("; ", jiraErrMsgs)}", true);
+                if (poSuccess && jiraErrMsgs.Count == 0)
+                {
+                    finalMsg     = $"PO + Jira ({string.Join(", ", jiraOkKeys)}): OK";
+                    finalIsError = false;
+                }
+                else if (!poSuccess && jiraErrMsgs.Count == 0)
+                {
+                    finalMsg     = $"PO: guardado local — Jira ({string.Join(", ", jiraOkKeys)}): OK";
+                    finalIsError = true;
+                }
+                else if (poSuccess)
+                {
+                    finalMsg     = $"PO OK — Jira: {string.Join("; ", jiraErrMsgs)}";
+                    finalIsError = true;
+                }
                 else
-                    ShowStatusMessage($"PO OK — Jira error: {string.Join("; ", jiraErrMsgs)}", true);
+                {
+                    finalMsg     = $"PO: guardado local — Jira: {string.Join("; ", jiraErrMsgs)}";
+                    finalIsError = true;
+                }
             }
+            else
+            {
+                finalMsg     = poSuccess ? poMessage : $"{poMessage} - guardado localmente";
+                finalIsError = !poSuccess;
+            }
+
+            ShowStatusMessage(finalMsg, finalIsError);
 
             // Update local entry (merge or add)
             if (existingEntry != null)
