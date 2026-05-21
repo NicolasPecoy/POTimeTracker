@@ -29,4 +29,12 @@ namespace POTimeTracker.Models
         public string Assignee { get; set; } = "";
         public override string ToString() => $"{Key}: {Summary}";
     }
+
+    public class JiraWorklogEntry
+    {
+        public string IssueKey       { get; set; } = "";
+        public string Summary        { get; set; } = "";
+        public string StatusCategory { get; set; } = "";
+        public double Hours          { get; set; }
+    }
 }

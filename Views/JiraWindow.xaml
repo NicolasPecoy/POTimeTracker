@@ -59,7 +59,7 @@
 
                     <TextBlock Text="URL DE JIRA (ej: https://empresa.atlassian.net)" Style="{StaticResource LabelStyle}"/>
                     <TextBox x:Name="txtBaseUrl" Style="{StaticResource ModernTextBox}"
-                             Text="https://" Margin="0,0,0,14"/>
+                             Text="https://invenzis.atlassian.net" Margin="0,0,0,14"/>
 
                     <TextBlock Text="EMAIL" Style="{StaticResource LabelStyle}"/>
                     <TextBox x:Name="txtEmail" Style="{StaticResource ModernTextBox}" Margin="0,0,0,14"/>
@@ -352,6 +352,73 @@
                     <TextBlock x:Name="txtStatus" FontSize="12" HorizontalAlignment="Center"
                                Margin="0,8,0,0" Visibility="Collapsed" TextWrapping="Wrap"/>
                 </StackPanel>
+
+                <!-- DAILY WORKLOGS -->
+                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                    <StackPanel>
+
+                        <!-- Hours summary -->
+                        <Border Background="{StaticResource BgBaseBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="0,0,0,1" Padding="18,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                    <TextBlock Text="I M P U T A D O" FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="txtJiraHoursToday" Text="0.0"
+                                               FontSize="18" FontWeight="SemiBold" FontFamily="Consolas"
+                                               Foreground="{StaticResource GreenBrush}"
+                                               HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                    <TextBlock Text="O B J E T I V O" FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="txtJiraTargetHours" Text="8.0"
+                                               FontSize="18" FontWeight="SemiBold" FontFamily="Consolas"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <Border Width="80" Height="4" CornerRadius="2"
+                                            Background="{StaticResource BgElevatedBrush}" Margin="0,4,0,0"
+                                            HorizontalAlignment="Center">
+                                        <Border x:Name="JiraProgressBar" Height="4" CornerRadius="2"
+                                                Background="{StaticResource GreenBrush}"
+                                                HorizontalAlignment="Left" Width="0"/>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Entries header -->
+                        <Border Background="{StaticResource BgBaseBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="0,0,0,1" Padding="18,6">
+                            <Grid>
+                                <TextBlock Text="REGISTROS DEL DIA" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}"/>
+                                <TextBlock x:Name="txtWorklogCount" Text="0" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextMutedBrush}" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+
+                        <ScrollViewer x:Name="WorklogsScrollViewer" VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="WorklogsPanel"/>
+                        </ScrollViewer>
+
+                        <TextBlock x:Name="txtWorklogsEmpty" Text="No hay registros para este dia"
+                                   FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                   HorizontalAlignment="Center" Padding="0,16" Visibility="Visible"/>
+
+                        <StackPanel x:Name="WorklogsLoading" HorizontalAlignment="Center"
+                                    Margin="0,8,0,8" Visibility="Collapsed">
+                            <TextBlock Text="Cargando..." Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                        </StackPanel>
+
+                    </StackPanel>
+                </Border>
 
                 <!-- FILTER POPUP -->
                 <Popup x:Name="FilterPopup"

@@ -320,24 +320,44 @@
                             </CheckBox>
 
                             <StackPanel x:Name="JiraIssueInput" Visibility="Collapsed" Margin="0,8,0,0">
-                                <TextBlock Text="CLAVE DEL ISSUE (ej: PROJ-123)" Style="{StaticResource LabelStyle}"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox x:Name="txtJiraIssueKey" Grid.Column="0"
-                                             Style="{StaticResource ModernTextBox}"
-                                             FontFamily="Consolas" FontSize="13"
-                                             CharacterCasing="Upper"
-                                             LostFocus="TxtJiraIssueKey_LostFocus"/>
-                                    <Border x:Name="JiraIssueStatus" Grid.Column="1"
-                                            CornerRadius="4" Padding="6,4" Margin="6,0,0,0"
-                                            VerticalAlignment="Center" Visibility="Collapsed">
-                                        <TextBlock x:Name="txtJiraIssueName" FontSize="11"
-                                                   MaxWidth="130" TextTrimming="CharacterEllipsis"/>
-                                    </Border>
-                                </Grid>
+                                <TextBlock Text="MIS ISSUES" Style="{StaticResource LabelStyle}" Margin="0,0,0,4"/>
+
+                                <StackPanel x:Name="JiraIssuesLoading" HorizontalAlignment="Center"
+                                            Margin="0,4,0,4" Visibility="Collapsed">
+                                    <TextBlock Text="Cargando..." FontSize="12"
+                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+
+                                <TextBlock x:Name="txtJiraIssuesEmpty"
+                                           Text="No se encontraron issues"
+                                           FontSize="12" Foreground="{StaticResource TextMutedBrush}"
+                                           HorizontalAlignment="Center" Padding="0,8"
+                                           Visibility="Collapsed"/>
+
+                                <ScrollViewer x:Name="JiraIssuesScrollViewer"
+                                              MaxHeight="170" VerticalScrollBarVisibility="Auto"
+                                              Visibility="Collapsed">
+                                    <StackPanel x:Name="JiraIssuesPanel"/>
+                                </ScrollViewer>
+
+                                <Border x:Name="JiraHoursSummary" Visibility="Collapsed"
+                                        Background="{StaticResource BgElevatedBrush}"
+                                        CornerRadius="6" Padding="10,5" Margin="0,6,0,0">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <TextBlock Text="Asignado: " FontSize="11"
+                                                   Foreground="{StaticResource TextMutedBrush}"/>
+                                        <TextBlock x:Name="txtJiraHoursAssigned" FontSize="11"
+                                                   FontWeight="SemiBold" FontFamily="Consolas"
+                                                   Foreground="{StaticResource AccentBrush}"/>
+                                        <TextBlock Text=" / " FontSize="11"
+                                                   Foreground="{StaticResource TextMutedBrush}"/>
+                                        <TextBlock x:Name="txtJiraHoursTotal" FontSize="11"
+                                                   FontWeight="SemiBold" FontFamily="Consolas"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        <TextBlock Text="h" FontSize="11"
+                                                   Foreground="{StaticResource TextMutedBrush}"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </StackPanel>
                     </Border>
