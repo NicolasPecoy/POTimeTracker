@@ -14,7 +14,6 @@ using Hardcodet.Wpf.TaskbarNotification;
 using Microsoft.Win32;
 using POTimeTracker.Models;
 using POTimeTracker.Services;
-using System.Text.RegularExpressions;
 
 namespace POTimeTracker.Views
 {
@@ -23,6 +22,9 @@ namespace POTimeTracker.Views
         private readonly POApiService   _api  = new();
         private readonly JiraApiService _jira = new();
         private JiraWindow? _jiraWindow;
+
+        private List<JiraIssue>         _jiraAllIssues      = new();
+        private Dictionary<string, double> _jiraSelectedIssues = new();
 
         private DateTime _currentDate = DateTime.Today;
         private DateTime _projectsLoadedForDate = DateTime.MinValue;
@@ -652,10 +654,8 @@ namespace POTimeTracker.Views
             }
 
             // Dual-log to Jira if enabled
-            var jiraKey = chkLogToJira.IsChecked == true ? txtJiraIssueKey.Text.Trim().ToUpperInvariant() : "";
-            if (!string.IsNullOrEmpty(jiraKey) && Regex.IsMatch(jiraKey, @"^[A-Z]+-\d+$"))
+            if (chkLogToJira.IsChecked == true && _jiraSelectedIssues.Count > 0)
             {
-                entry.JiraIssueKey = jiraKey;
                 if (!_jira.IsConnected)
                 {
                     var (cfg, token) = JiraConfigService.LoadConfig();
@@ -665,12 +665,26 @@ namespace POTimeTracker.Views
                         await _jira.TestConnectionAsync();
                     }
                 }
-                var (jiraOk, jiraMsg) = await _jira.LogWorkAsync(jiraKey, hours, _currentDate, txtNotes.Text.Trim());
-                entry.JiraSynced = jiraOk;
-                if (jiraOk)
-                    ShowStatusMessage($"PO + Jira ({jiraKey}): OK", false);
+
+                var jiraOkKeys  = new List<string>();
+                var jiraErrMsgs = new List<string>();
+
+                foreach (var (jiraKey, jiraHours) in _jiraSelectedIssues.Where(x => x.Value > 0))
+                {
+                    var (jiraOk, jiraMsg) = await _jira.LogWorkAsync(jiraKey, jiraHours, _currentDate, txtNotes.Text.Trim());
+                    if (jiraOk) jiraOkKeys.Add(jiraKey);
+                    else        jiraErrMsgs.Add($"{jiraKey}: {jiraMsg}");
+                }
+
+                entry.JiraIssueKey = string.Join(", ", jiraOkKeys);
+                entry.JiraSynced   = jiraErrMsgs.Count == 0;
+
+                if (jiraErrMsgs.Count == 0)
+                    ShowStatusMessage($"PO + Jira ({string.Join(", ", jiraOkKeys)}): OK", false);
+                else if (jiraOkKeys.Count > 0)
+                    ShowStatusMessage($"PO OK — Jira parcial: {string.Join("; ", jiraErrMsgs)}", true);
                 else
-                    ShowStatusMessage($"PO OK — Jira: {jiraMsg}", true);
+                    ShowStatusMessage($"PO OK — Jira error: {string.Join("; ", jiraErrMsgs)}", true);
             }
 
             // Update local entry (merge or add)
@@ -694,10 +708,7 @@ namespace POTimeTracker.Views
             txtNotes.Text = "";
             txtHours.Text = "1.0";
             if (chkLogToJira.IsChecked == true)
-            {
-                txtJiraIssueKey.Text       = "";
-                JiraIssueStatus.Visibility = Visibility.Collapsed;
-            }
+                chkLogToJira.IsChecked = false;
             RefreshAll();
         }
 
@@ -796,24 +807,22 @@ namespace POTimeTracker.Views
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
-            if (chkLogToJira.IsChecked == false)
+            if (chkLogToJira.IsChecked == true)
             {
-                txtJiraIssueKey.Text       = "";
-                JiraIssueStatus.Visibility = Visibility.Collapsed;
+                _jiraSelectedIssues.Clear();
+                _ = LoadJiraIssuesAsync();
+            }
+            else
+            {
+                _jiraSelectedIssues.Clear();
+                _jiraAllIssues.Clear();
             }
 
             _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
-        private async void TxtJiraIssueKey_LostFocus(object sender, RoutedEventArgs e)
+        private async System.Threading.Tasks.Task LoadJiraIssuesAsync()
         {
-            var key = txtJiraIssueKey.Text.Trim().ToUpperInvariant();
-            if (string.IsNullOrWhiteSpace(key) || !Regex.IsMatch(key, @"^[A-Z]+-\d+$"))
-            {
-                JiraIssueStatus.Visibility = Visibility.Collapsed;
-                return;
-            }
-
             if (!_jira.IsConnected)
             {
                 var (cfg, token) = JiraConfigService.LoadConfig();
@@ -824,22 +833,166 @@ namespace POTimeTracker.Views
                 }
             }
 
-            var issue = await _jira.GetIssueAsync(key);
-            if (issue != null)
+            JiraIssuesLoading.Visibility      = Visibility.Visible;
+            JiraIssuesScrollViewer.Visibility  = Visibility.Collapsed;
+            txtJiraIssuesEmpty.Visibility      = Visibility.Collapsed;
+            JiraHoursSummary.Visibility        = Visibility.Collapsed;
+            JiraIssuesPanel.Children.Clear();
+            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
+
+            _jiraAllIssues = await _jira.GetMyIssuesAsync("");
+
+            JiraIssuesLoading.Visibility = Visibility.Collapsed;
+
+            if (_jiraAllIssues.Count == 0)
             {
-                JiraIssueStatus.Visibility  = Visibility.Visible;
-                JiraIssueStatus.Background  = new SolidColorBrush(Color.FromArgb(40, 52, 211, 153));
-                txtJiraIssueName.Text       = issue.Summary;
-                txtJiraIssueName.Foreground = GreenBrushCached;
+                txtJiraIssuesEmpty.Visibility = Visibility.Visible;
             }
             else
             {
-                JiraIssueStatus.Visibility  = Visibility.Visible;
-                JiraIssueStatus.Background  = new SolidColorBrush(Color.FromArgb(40, 248, 113, 113));
-                txtJiraIssueName.Text       = "Issue no encontrado";
-                txtJiraIssueName.Foreground = RedBrushCached;
+                JiraIssuesScrollViewer.Visibility = Visibility.Visible;
+                BuildJiraIssuesList();
             }
+
+            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
         }
+
+        private void BuildJiraIssuesList()
+        {
+            JiraIssuesPanel.Children.Clear();
+            foreach (var issue in _jiraAllIssues)
+                JiraIssuesPanel.Children.Add(BuildJiraIssueRow(issue));
+            UpdateJiraHoursSummary();
+        }
+
+        private Border BuildJiraIssueRow(JiraIssue issue)
+        {
+            var outerGrid = new Grid();
+            outerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
+            outerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
+            outerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            outerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var bar = new Border
+            {
+                CornerRadius      = new CornerRadius(2),
+                Width             = 3,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                Background        = GetJiraStatusBrush(issue.StatusCategory)
+            };
+            Grid.SetColumn(bar, 0);
+            outerGrid.Children.Add(bar);
+
+            var keyBlock = new TextBlock
+            {
+                Text       = issue.Key,
+                FontSize   = 10,
+                FontWeight = FontWeights.SemiBold,
+                FontFamily = new FontFamily("Consolas"),
+                Foreground = new SolidColorBrush(Color.FromRgb(38, 132, 255))
+            };
+            var summaryBlock = new TextBlock
+            {
+                Text         = issue.Summary,
+                FontSize     = 11,
+                Foreground   = TextPrimaryBrushCached,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin       = new Thickness(0, 1, 0, 0)
+            };
+            var infoPanel = new StackPanel();
+            infoPanel.Children.Add(keyBlock);
+            infoPanel.Children.Add(summaryBlock);
+
+            var chk = new CheckBox
+            {
+                Content                  = infoPanel,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin                   = new Thickness(0)
+            };
+            Grid.SetColumn(chk, 2);
+            outerGrid.Children.Add(chk);
+
+            var hoursBox = new TextBox
+            {
+                Text              = "0.0",
+                Width             = 48,
+                FontFamily        = new FontFamily("Consolas"),
+                FontSize          = 12,
+                TextAlignment     = TextAlignment.Center,
+                Visibility        = Visibility.Collapsed,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin            = new Thickness(8, 0, 0, 0)
+            };
+            if (TryFindResource("ModernTextBox") is Style boxStyle)
+                hoursBox.Style = boxStyle;
+
+            Grid.SetColumn(hoursBox, 3);
+            outerGrid.Children.Add(hoursBox);
+
+            var captured = issue;
+            chk.Checked += (s, ev) =>
+            {
+                hoursBox.Visibility = Visibility.Visible;
+                double remaining    = GetJiraRemainingHours();
+                hoursBox.Text       = remaining.ToString("0.0", CultureInfo.CurrentCulture);
+                Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
+            };
+            chk.Unchecked += (s, ev) =>
+            {
+                hoursBox.Visibility = Visibility.Collapsed;
+                _jiraSelectedIssues.Remove(captured.Key);
+                UpdateJiraHoursSummary();
+                Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
+            };
+            hoursBox.TextChanged += (s, _) =>
+            {
+                if (chk.IsChecked == true && TryParseHours(hoursBox.Text, out var h) && h >= 0)
+                {
+                    _jiraSelectedIssues[captured.Key] = h;
+                    UpdateJiraHoursSummary();
+                }
+            };
+
+            return new Border
+            {
+                Padding         = new Thickness(14, 7, 14, 7),
+                BorderBrush     = new SolidColorBrush(Color.FromArgb(25, 42, 45, 62)),
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                Background      = TransparentBrush,
+                Child           = outerGrid
+            };
+        }
+
+        private double GetJiraRemainingHours()
+        {
+            TryParseHours(txtHours.Text, out var total);
+            var assigned = _jiraSelectedIssues.Values.Sum();
+            return Math.Max(0, Math.Round((total - assigned) * 10) / 10);
+        }
+
+        private void UpdateJiraHoursSummary()
+        {
+            bool anySelected = _jiraSelectedIssues.Count > 0;
+            JiraHoursSummary.Visibility = anySelected ? Visibility.Visible : Visibility.Collapsed;
+
+            if (anySelected)
+            {
+                TryParseHours(txtHours.Text, out var total);
+                var assigned = _jiraSelectedIssues.Values.Sum();
+                txtJiraHoursAssigned.Text      = assigned.ToString("0.0", CultureInfo.CurrentCulture);
+                txtJiraHoursTotal.Text         = total.ToString("0.0", CultureInfo.CurrentCulture);
+                txtJiraHoursAssigned.Foreground = assigned > total + 0.01 ? RedBrushCached : AccentBrushCached;
+            }
+
+            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private static SolidColorBrush GetJiraStatusBrush(string category) => category switch
+        {
+            "done"          => new SolidColorBrush(Color.FromRgb(52, 211, 153)),
+            "indeterminate" => new SolidColorBrush(Color.FromRgb(251, 191, 36)),
+            _               => new SolidColorBrush(Color.FromRgb(38, 132, 255))
+        };
 
         // ══════════════════════════════════════════════════
         // SYSTEM TRAY

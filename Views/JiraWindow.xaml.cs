@@ -24,6 +24,7 @@ namespace POTimeTracker.Views
         private JiraIssue?        _selectedIssue;
         private DateTime          _selectedDate = DateTime.Today;
         private HashSet<string>   _activeStatusFilters = new();
+        private bool              _showCompleted = false;
         private CancellationTokenSource? _searchCts;
 
         /// <summary>Fired when the window hides itself (minimize button or deactivation).</summary>
@@ -61,7 +62,7 @@ namespace POTimeTracker.Views
             // Always pre-fill the config form fields from saved data
             if (config != null)
             {
-                txtBaseUrl.Text        = !string.IsNullOrEmpty(config.BaseUrl) ? config.BaseUrl : "https://";
+                txtBaseUrl.Text        = !string.IsNullOrEmpty(config.BaseUrl) ? config.BaseUrl : "https://invenzis.atlassian.net";
                 txtEmail.Text          = config.Email;
                 txtDefaultProject.Text = config.DefaultProjectKey;
             }
@@ -134,6 +135,7 @@ namespace POTimeTracker.Views
             }
 
             await LoadIssuesAsync();
+            _ = LoadDailyWorklogsAsync();
         }
 
         private async System.Threading.Tasks.Task LoadIssuesAsync()
@@ -146,7 +148,7 @@ namespace POTimeTracker.Views
             var selectedProject = cboProject.SelectedItem as JiraProject;
             var projectKey      = selectedProject?.Id == "" ? "" : selectedProject?.Key ?? "";
 
-            _allIssues = await _jira.GetMyIssuesAsync(projectKey);
+            _allIssues = await _jira.GetMyIssuesAsync(projectKey, includeDone: _showCompleted);
             _issues    = new List<JiraIssue>(_allIssues);
             BuildIssuesList();
             ShowIssuesLoading(false);
@@ -427,6 +429,7 @@ namespace POTimeTracker.Views
                 btnSubmit.Content    = "Registrado!";
                 btnSubmit.Background = GreenBrush;
                 ShowStatusMessage($"{hours:0.0}h en {_selectedIssue.Key}", false);
+                _ = LoadDailyWorklogsAsync();
             }
             else
             {
@@ -441,6 +444,116 @@ namespace POTimeTracker.Views
             btnSubmit.IsEnabled  = true;
             txtNotes.Text        = "";
             txtHours.Text        = "1.0";
+        }
+
+        // ══════════════════════════════════════════════════
+        // DAILY WORKLOGS
+        // ══════════════════════════════════════════════════
+
+        private async System.Threading.Tasks.Task LoadDailyWorklogsAsync()
+        {
+            WorklogsLoading.Visibility  = Visibility.Visible;
+            WorklogsPanel.Children.Clear();
+            txtWorklogsEmpty.Visibility = Visibility.Collapsed;
+            txtWorklogCount.Text        = "0";
+            UpdateWorklogsSummary(new List<JiraWorklogEntry>());
+            RePositionAsync();
+
+            var worklogs = await _jira.GetMyWorklogsForDateAsync(_selectedDate);
+
+            WorklogsLoading.Visibility = Visibility.Collapsed;
+            txtWorklogCount.Text       = worklogs.Count.ToString();
+
+            if (worklogs.Count == 0)
+            {
+                txtWorklogsEmpty.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                WorklogsScrollViewer.Height = worklogs.Count > 2 ? 112 : double.NaN;
+                foreach (var entry in worklogs)
+                    WorklogsPanel.Children.Add(BuildWorklogItem(entry));
+            }
+
+            UpdateWorklogsSummary(worklogs);
+            RePositionAsync();
+        }
+
+        private Border BuildWorklogItem(JiraWorklogEntry entry)
+        {
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var bar = new Border
+            {
+                CornerRadius      = new CornerRadius(2),
+                Width             = 3,
+                VerticalAlignment = VerticalAlignment.Stretch,
+                Background        = GetStatusBrush(entry.StatusCategory)
+            };
+            Grid.SetColumn(bar, 0);
+            grid.Children.Add(bar);
+
+            var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            info.Children.Add(new TextBlock
+            {
+                Text         = entry.IssueKey,
+                FontSize     = 11,
+                FontWeight   = FontWeights.SemiBold,
+                FontFamily   = new FontFamily("Consolas"),
+                Foreground   = JiraBlue,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            });
+            info.Children.Add(new TextBlock
+            {
+                Text         = entry.Summary,
+                FontSize     = 11,
+                Foreground   = TextSecondary,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin       = new Thickness(0, 1, 0, 0)
+            });
+            Grid.SetColumn(info, 2);
+            grid.Children.Add(info);
+
+            var hoursTb = new TextBlock
+            {
+                Text              = entry.Hours.ToString("0.0") + "h",
+                FontSize          = 14,
+                FontWeight        = FontWeights.SemiBold,
+                FontFamily        = new FontFamily("Consolas"),
+                Foreground        = AccentBrush,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin            = new Thickness(10, 0, 0, 0)
+            };
+            Grid.SetColumn(hoursTb, 3);
+            grid.Children.Add(hoursTb);
+
+            return new Border
+            {
+                Padding         = new Thickness(18, 8, 18, 8),
+                BorderBrush     = new SolidColorBrush(Color.FromArgb(25, 42, 45, 62)),
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                Background      = Transparent,
+                Child           = grid
+            };
+        }
+
+        private void UpdateWorklogsSummary(List<JiraWorklogEntry> worklogs)
+        {
+            double totalHours  = worklogs.Sum(w => w.Hours);
+            var    config      = CredentialService.LoadConfig();
+            double weekly      = config?.WeeklyTarget > 0 ? config.WeeklyTarget : 40.0;
+            double dailyTarget = Math.Round(weekly / 5.0, 1);
+
+            txtJiraHoursToday.Text       = totalHours.ToString("0.0");
+            txtJiraTargetHours.Text      = dailyTarget.ToString("0.0");
+            txtJiraHoursToday.Foreground = totalHours >= dailyTarget ? GreenBrush : TextPrimary;
+
+            double pct = dailyTarget > 0 ? Math.Min(totalHours / dailyTarget, 1.0) : 0;
+            JiraProgressBar.Width = pct * 80;
         }
 
         // ══════════════════════════════════════════════════
@@ -470,18 +583,21 @@ namespace POTimeTracker.Views
         {
             _selectedDate = _selectedDate.AddDays(-1);
             UpdateDateDisplay();
+            _ = LoadDailyWorklogsAsync();
         }
 
         private void BtnDateNext_Click(object sender, RoutedEventArgs e)
         {
             _selectedDate = _selectedDate.AddDays(1);
             UpdateDateDisplay();
+            _ = LoadDailyWorklogsAsync();
         }
 
         private void BtnDateToday_Click(object sender, RoutedEventArgs e)
         {
             _selectedDate = DateTime.Today;
             UpdateDateDisplay();
+            _ = LoadDailyWorklogsAsync();
         }
 
         // ══════════════════════════════════════════════════
@@ -498,6 +614,7 @@ namespace POTimeTracker.Views
         {
             txtSearch.Text = "Buscar issue...";
             _activeStatusFilters.Clear();
+            _showCompleted = false;
             FilterActiveDot.Visibility = Visibility.Collapsed;
             await LoadIssuesAsync();
         }
@@ -505,6 +622,14 @@ namespace POTimeTracker.Views
         private void BtnFilter_Click(object sender, RoutedEventArgs e)
         {
             if (FilterPopup.IsOpen) { FilterPopup.IsOpen = false; return; }
+
+            if (_activeStatusFilters.Count > 0)
+            {
+                _activeStatusFilters.Clear();
+                FilterActiveDot.Visibility = _showCompleted ? Visibility.Visible : Visibility.Collapsed;
+                ApplyFilters();
+                return;
+            }
 
             FilterOptionsPanel.Children.Clear();
 
@@ -531,6 +656,24 @@ namespace POTimeTracker.Views
                 FilterOptionsPanel.Children.Add(cb);
             }
 
+            FilterOptionsPanel.Children.Add(new Border
+            {
+                Height     = 1,
+                Background = new SolidColorBrush(Color.FromArgb(40, 99, 102, 241)),
+                Margin     = new Thickness(8, 6, 8, 2)
+            });
+
+            var cbDone = new CheckBox
+            {
+                Content   = "Mostrar completados",
+                IsChecked = _showCompleted,
+                Foreground = TextPrimary, FontSize = 12,
+                Margin = new Thickness(8, 3, 12, 6)
+            };
+            cbDone.Checked   += CompletedFilter_Changed;
+            cbDone.Unchecked += CompletedFilter_Changed;
+            FilterOptionsPanel.Children.Add(cbDone);
+
             FilterPopup.PlacementTarget = btnFilter;
             FilterPopup.IsOpen = true;
         }
@@ -548,10 +691,20 @@ namespace POTimeTracker.Views
             if (_activeStatusFilters.SetEquals(allStatuses))
                 _activeStatusFilters.Clear();
 
-            FilterActiveDot.Visibility = _activeStatusFilters.Count > 0
+            FilterActiveDot.Visibility = (_activeStatusFilters.Count > 0 || _showCompleted)
                 ? Visibility.Visible : Visibility.Collapsed;
 
             ApplyFilters();
+        }
+
+        private async void CompletedFilter_Changed(object sender, RoutedEventArgs e)
+        {
+            if (sender is not CheckBox cb) return;
+            _showCompleted = cb.IsChecked == true;
+            FilterPopup.IsOpen = false;
+            _activeStatusFilters.Clear();
+            FilterActiveDot.Visibility = _showCompleted ? Visibility.Visible : Visibility.Collapsed;
+            await LoadIssuesAsync();
         }
 
         private void ChkProxy_Changed(object sender, RoutedEventArgs e)
@@ -571,7 +724,7 @@ namespace POTimeTracker.Views
             var (config, token) = JiraConfigService.LoadConfig();
             if (config != null)
             {
-                txtBaseUrl.Text        = config.BaseUrl;
+                txtBaseUrl.Text        = !string.IsNullOrEmpty(config.BaseUrl) ? config.BaseUrl : "https://invenzis.atlassian.net";
                 txtEmail.Text          = config.Email;
                 txtDefaultProject.Text = config.DefaultProjectKey;
             }

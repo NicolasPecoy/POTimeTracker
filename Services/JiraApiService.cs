@@ -16,7 +16,8 @@ namespace POTimeTracker.Services
         private string _baseUrl  = "";
         private string _lastCredentials = "";   // cached for proxy toggle
 
-        public string? CurrentUser { get; private set; }
+        public string? CurrentUser          { get; private set; }
+        public string? CurrentUserAccountId { get; private set; }
         public bool IsConnected => !string.IsNullOrEmpty(_baseUrl) && CurrentUser != null;
         public bool ProxyEnabled { get; private set; }
 
@@ -115,7 +116,8 @@ namespace POTimeTracker.Services
                 var email       = GetString(json, "emailAddress");
                 var name        = displayName.Length > 0 ? displayName : email;
 
-                CurrentUser = name;
+                CurrentUser          = name;
+                CurrentUserAccountId = GetString(json, "accountId");
                 return (true, name, "Conexion exitosa");
             }
             catch (TaskCanceledException)
@@ -196,9 +198,11 @@ namespace POTimeTracker.Services
             }
         }
 
-        public Task<List<JiraIssue>> GetMyIssuesAsync(string projectKey = "", int maxResults = 50)
+        public Task<List<JiraIssue>> GetMyIssuesAsync(string projectKey = "", int maxResults = 50, bool includeDone = false)
         {
-            var jql = "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC";
+            var jql = includeDone
+                ? "assignee = currentUser() ORDER BY updated DESC"
+                : "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC";
             if (!string.IsNullOrWhiteSpace(projectKey))
                 jql = $"project = \"{projectKey}\" AND " + jql;
             return SearchIssuesAsync(jql, maxResults);
@@ -270,6 +274,81 @@ namespace POTimeTracker.Services
             {
                 LogService.Error($"JiraApiService.LogWorkAsync({issueKey})", ex);
                 return (false, $"Error: {ex.Message}");
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // WORKLOGS DEL DÍA
+        // ═══════════════════════════════════════════════════════════
+
+        public async Task<List<JiraWorklogEntry>> GetMyWorklogsForDateAsync(DateTime date)
+        {
+            try
+            {
+                var dateStr = date.ToString("yyyy-MM-dd");
+                var jql     = $"worklogAuthor = currentUser() AND worklogDate = \"{dateStr}\"";
+                var issues  = await SearchIssuesAsync(jql, 50);
+
+                var result = new List<JiraWorklogEntry>();
+                foreach (var issue in issues)
+                {
+                    double hours = await GetIssueWorklogHoursForDateAsync(issue.Key, date);
+                    if (hours > 0)
+                        result.Add(new JiraWorklogEntry
+                        {
+                            IssueKey       = issue.Key,
+                            Summary        = issue.Summary,
+                            StatusCategory = issue.StatusCategory,
+                            Hours          = hours
+                        });
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("JiraApiService.GetMyWorklogsForDateAsync", ex);
+                return new();
+            }
+        }
+
+        private async Task<double> GetIssueWorklogHoursForDateAsync(string issueKey, DateTime date)
+        {
+            try
+            {
+                var url      = $"{_baseUrl}/rest/api/3/issue/{Uri.EscapeDataString(issueKey)}/worklog?maxResults=100";
+                var response = await _client.GetAsync(url);
+                var body     = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode) return 0;
+
+                var json = JsonSerializer.Deserialize<JsonElement>(body);
+                if (!json.TryGetProperty("worklogs", out var worklogs)) return 0;
+
+                var datePrefix = date.ToString("yyyy-MM-dd");
+                double totalSeconds = 0;
+
+                foreach (var wl in worklogs.EnumerateArray())
+                {
+                    // Filter by author when account ID is known
+                    if (!string.IsNullOrEmpty(CurrentUserAccountId))
+                    {
+                        if (!wl.TryGetProperty("author", out var author)) continue;
+                        if (GetString(author, "accountId") != CurrentUserAccountId) continue;
+                    }
+
+                    // Filter by date (started is stored with the submitted timezone)
+                    var started = GetString(wl, "started");
+                    if (started.Length < 10 || started[..10] != datePrefix) continue;
+
+                    if (wl.TryGetProperty("timeSpentSeconds", out var tss))
+                        totalSeconds += tss.GetInt32();
+                }
+
+                return Math.Round(totalSeconds / 3600.0, 2);
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"JiraApiService.GetIssueWorklogHoursForDateAsync({issueKey})", ex);
+                return 0;
             }
         }
 
