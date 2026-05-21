@@ -1109,11 +1109,12 @@ namespace POTimeTracker.Views
             if (_notifyIcon?.ContextMenu == null)
                 return;
 
-            SetMenuIcon(FindMenuItem("Abrir Widget"), "open-widget.png");
-            SetMenuIcon(FindMenuItem("Recargar Proyectos"), "reload-projects.png");
-            SetMenuIcon(FindMenuItem("Cerrar Sesion"), "logout.png");
-            SetMenuIcon(FindMenuItem("Salir"), "exit.png");
-            // Configuracion no tiene icono especifico, no se llama SetMenuIcon
+            SetMenuIcon(FindMenuItem("Abrir Widget"),      "open-widget.png");
+            SetMenuIcon(FindMenuItem("Abrir Jira"),        "jira.png");
+            SetMenuIcon(FindMenuItem("Recargar Proyectos"),"reload-projects.png");
+            SetMenuIcon(FindMenuItem("Configuracion"),     "settings.png");
+            SetMenuIcon(FindMenuItem("Cerrar Sesion"),     "logout.png");
+            SetMenuIcon(FindMenuItem("Salir"),             "exit.png");
         }
 
         private MenuItem? FindMenuItem(string header)
