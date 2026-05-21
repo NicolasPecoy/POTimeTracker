@@ -17,6 +17,10 @@ namespace POTimeTracker.Views
 {
     public partial class JiraWindow : Window
     {
+        private const string DefaultBaseUrl = "https://invenzis.atlassian.net";
+        private const string DefaultEmail   = "jira.admin@invenzis.com";
+        private const string DefaultToken   = "ATATT3xFfGF09wyvPdb_olxbSGTqJNDZV4d8rEm0j4YA7r5YAUGt7RYX9hqZ0vPI94IjjS80ukmqsEPiHGeHcIcXPayp21gVPw-kDyWFy6JGYpRkHReXOnOo75Np6bIk6abwNKY-QoWIci0zTe5TTFn8Qy7ejTiWDALxon_tPZ7VP-rFrIvOvdA=113E653B";
+
         private readonly JiraApiService _jira = new();
         private List<JiraProject> _projects   = new();
         private List<JiraIssue>   _allIssues  = new();
@@ -55,49 +59,51 @@ namespace POTimeTracker.Views
         {
             _selectedDate = DateTime.Today;
             UpdateDateDisplay();
-            PositionAboveTray();
 
             var (config, token) = JiraConfigService.LoadConfig();
 
-            // Always pre-fill the config form fields from saved data
-            if (config != null)
+            // Resolve effective credentials: saved config takes priority, admin defaults as fallback
+            string effectiveUrl     = !string.IsNullOrWhiteSpace(config?.BaseUrl) ? config!.BaseUrl : DefaultBaseUrl;
+            string effectiveEmail   = !string.IsNullOrWhiteSpace(config?.Email)   ? config!.Email   : DefaultEmail;
+            string effectiveToken   = !string.IsNullOrWhiteSpace(token)           ? token           : DefaultToken;
+            string effectiveProjKey = config?.DefaultProjectKey ?? "";
+
+            // Pre-fill config form with effective values
+            txtBaseUrl.Text        = effectiveUrl;
+            txtEmail.Text          = effectiveEmail;
+            txtDefaultProject.Text = effectiveProjKey;
+            txtApiToken.Password   = effectiveToken;
+
+            // Always attempt auto-connect
+            _jira.Configure(effectiveUrl, effectiveEmail, effectiveToken);
+            ShowConfigLoading(true);
+            var (ok, user, _) = await _jira.TestConnectionAsync();
+            ShowConfigLoading(false);
+
+            if (ok)
             {
-                txtBaseUrl.Text        = !string.IsNullOrEmpty(config.BaseUrl) ? config.BaseUrl : "https://invenzis.atlassian.net";
-                txtEmail.Text          = config.Email;
-                txtDefaultProject.Text = config.DefaultProjectKey;
-            }
-            if (!string.IsNullOrEmpty(token))
-                txtApiToken.Password = token;
-
-            // Auto-connect if fully configured
-            bool fullyConfigured = config != null
-                && !string.IsNullOrWhiteSpace(config.BaseUrl)
-                && !string.IsNullOrWhiteSpace(config.Email)
-                && !string.IsNullOrWhiteSpace(token);
-
-            if (fullyConfigured)
-            {
-                _jira.Configure(config!.BaseUrl, config.Email, token);
-                ShowConfigLoading(true);
-                var (ok, user, _) = await _jira.TestConnectionAsync();
-                ShowConfigLoading(false);
-
-                if (ok)
+                var effectiveConfig = config ?? new JiraConfig
                 {
-                    await SwitchToMainViewAsync(config, user);
-                    return;
-                }
+                    BaseUrl           = effectiveUrl,
+                    Email             = effectiveEmail,
+                    DefaultProjectKey = effectiveProjKey,
+                    Enabled           = true
+                };
+                await SwitchToMainViewAsync(effectiveConfig, user);
+                return;
             }
 
             ConfigView.Visibility = Visibility.Visible;
             MainView.Visibility   = Visibility.Collapsed;
+            RePositionAsync();
         }
 
         private void PositionAboveTray()
         {
             UpdateLayout();
             var wa = SystemParameters.WorkArea;
-            double h = ActualHeight > 50 ? ActualHeight : 750;
+            MaxHeight = wa.Height - 20;
+            double h = ActualHeight > 50 ? ActualHeight : Math.Min(750, wa.Height - 20);
             Left = Math.Max(wa.Left, wa.Right - Width - 10);
             Top  = Math.Max(wa.Top,  wa.Bottom - h - 10);
         }
@@ -415,6 +421,11 @@ namespace POTimeTracker.Views
                 ShowStatusMessage("Ingresa las horas", true);
                 return;
             }
+            if (string.IsNullOrWhiteSpace(txtNotes.Text))
+            {
+                ShowStatusMessage("Las notas son obligatorias", true);
+                return;
+            }
 
             var date = _selectedDate;
 
@@ -722,17 +733,13 @@ namespace POTimeTracker.Views
             MainView.Visibility   = Visibility.Collapsed;
 
             var (config, token) = JiraConfigService.LoadConfig();
-            if (config != null)
-            {
-                txtBaseUrl.Text        = !string.IsNullOrEmpty(config.BaseUrl) ? config.BaseUrl : "https://invenzis.atlassian.net";
-                txtEmail.Text          = config.Email;
-                txtDefaultProject.Text = config.DefaultProjectKey;
-            }
-            if (!string.IsNullOrEmpty(token))
-                txtApiToken.Password = token;
+            txtBaseUrl.Text        = !string.IsNullOrWhiteSpace(config?.BaseUrl) ? config!.BaseUrl : DefaultBaseUrl;
+            txtEmail.Text          = !string.IsNullOrWhiteSpace(config?.Email)   ? config!.Email   : DefaultEmail;
+            txtDefaultProject.Text = config?.DefaultProjectKey ?? "";
+            txtApiToken.Password   = !string.IsNullOrWhiteSpace(token)           ? token           : DefaultToken;
+            chkProxy.IsChecked     = _jira.ProxyEnabled;
 
-            // Reflect current proxy state in checkbox
-            chkProxy.IsChecked = _jira.ProxyEnabled;
+            RePositionAsync();
         }
 
         private void BtnMinimize_Click(object sender, RoutedEventArgs e)

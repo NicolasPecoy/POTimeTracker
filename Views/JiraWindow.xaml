@@ -37,6 +37,7 @@
         <Grid>
             <!-- ═══════════ CONFIG VIEW ═══════════ -->
             <Border x:Name="ConfigView" Visibility="Visible" CornerRadius="16">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                 <StackPanel Margin="28,24">
 
                     <!-- Logo + Title -->
@@ -112,10 +113,14 @@
                         <TextBlock Text="Conectando..." Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
                     </StackPanel>
                 </StackPanel>
+                </ScrollViewer>
             </Border>
 
             <!-- ═══════════ MAIN VIEW ═══════════ -->
-            <StackPanel x:Name="MainView" Visibility="Collapsed">
+            <ScrollViewer x:Name="MainView" Visibility="Collapsed"
+                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Focusable="False">
+            <StackPanel>
 
                 <!-- HEADER -->
                 <Border Padding="18,14" BorderBrush="{StaticResource BorderBrush}"
@@ -441,6 +446,7 @@
                                Foreground="{StaticResource TextMutedBrush}" Opacity="0.6"/>
                 </Border>
             </StackPanel>
+            </ScrollViewer>
         </Grid>
     </Border>
 </Window>

@@ -133,7 +133,8 @@ namespace POTimeTracker.Views
         private void PositionAboveTray()
         {
             var wa = SystemParameters.WorkArea;
-            var height = ActualHeight > 50 ? ActualHeight : 750;
+            MaxHeight = wa.Height - 20;
+            var height = ActualHeight > 50 ? ActualHeight : Math.Min(750, wa.Height - 20);
             Left = Math.Max(wa.Left, wa.Right - Width - 10);
             Top = Math.Max(wa.Top, wa.Bottom - height - 10);
         }
@@ -595,6 +596,8 @@ namespace POTimeTracker.Views
             if (task == null) { ShowStatusMessage("Selecciona una tarea", true); return; }
             if (!TryParseHours(txtHours.Text, out var hours) || hours <= 0)
             { ShowStatusMessage("Ingresa las horas", true); return; }
+            if (string.IsNullOrWhiteSpace(txtNotes.Text))
+            { ShowStatusMessage("Las notas son obligatorias", true); return; }
 
             var key = DateKey(_currentDate);
             if (!_entries.ContainsKey(key)) _entries[key] = new List<TimeEntry>();
@@ -818,7 +821,8 @@ namespace POTimeTracker.Views
         {
             win.UpdateLayout();
             var wa = SystemParameters.WorkArea;
-            double h = win.ActualHeight > 50 ? win.ActualHeight : 750;
+            win.MaxHeight = wa.Height - 20;
+            double h = win.ActualHeight > 50 ? win.ActualHeight : Math.Min(500, wa.Height - 20);
             win.Left = Math.Max(wa.Left, wa.Right - win.Width - 10);
             win.Top  = Math.Max(wa.Top,  wa.Bottom - h - 10);
         }

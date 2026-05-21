@@ -66,6 +66,7 @@
         <Grid>
             <!-- ═══════════ LOGIN VIEW ═══════════ -->
             <Border x:Name="LoginView" Visibility="Visible" CornerRadius="16">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                 <StackPanel Margin="28,24">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,24">
                         <Border Background="{StaticResource AccentBrush}" CornerRadius="10"
@@ -104,10 +105,14 @@
                         <TextBlock Text="Conectando..." Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
                     </StackPanel>
                 </StackPanel>
+                </ScrollViewer>
             </Border>
 
             <!-- ═══════════ MAIN WIDGET VIEW ═══════════ -->
-            <StackPanel x:Name="MainView" Visibility="Collapsed">
+            <ScrollViewer x:Name="MainView" Visibility="Collapsed"
+                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Focusable="False">
+            <StackPanel>
 
                 <!-- HEADER -->
                 <Border Padding="18,14" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" CornerRadius="16,16,0,0">
@@ -404,6 +409,7 @@
                     </Grid>
                 </Border>
             </StackPanel>
+            </ScrollViewer>
         </Grid>
     </Border>
 </Window>
