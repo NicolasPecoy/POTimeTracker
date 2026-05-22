@@ -465,7 +465,12 @@ namespace POTimeTracker.Services
                 SetReferer(pageUrl);
 
                 // 1. GET fresh page state
-                var html = await (await _client.GetAsync(pageUrl)).Content.ReadAsStringAsync();
+                var getResp = await _client.GetAsync(pageUrl);
+                var html = await getResp.Content.ReadAsStringAsync();
+                var finalUrl = getResp.RequestMessage?.RequestUri?.ToString() ?? pageUrl;
+                if (!IsAuthenticatedTimeEntryPage(finalUrl, html))
+                    return (false, "session_expired");
+
                 if (showAllTasks)
                     html = await SearchTasksAsync(pageUrl, html, showAllTasks);
 

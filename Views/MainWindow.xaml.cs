@@ -639,6 +639,31 @@ namespace POTimeTracker.Views
 
             var (poSuccess, poMessage) = await _api.SubmitTimeEntryAsync(entry, chkShowAllTasks.IsChecked == true);
 
+            if (!poSuccess && poMessage == "session_expired")
+            {
+                var creds = CredentialService.LoadCredentials();
+                if (creds != null && !string.IsNullOrEmpty(creds.Username))
+                {
+                    var (loginOk, _) = await _api.LoginAsync(creds.ServerUrl, creds.Username, creds.Password);
+                    if (loginOk)
+                    {
+                        (poSuccess, poMessage) = await _api.SubmitTimeEntryAsync(entry, chkShowAllTasks.IsChecked == true);
+                    }
+                    else
+                    {
+                        _api.Logout();
+                        MainView.Visibility = Visibility.Collapsed;
+                        LoginView.Visibility = Visibility.Visible;
+                        Show(); PositionAboveTray(); Activate();
+                        ShowLoginError("Sesion expirada. Volve a iniciar sesion.");
+                        btnSubmit.IsEnabled = true;
+                        btnSubmit.Content = "Registrar Horas";
+                        btnSubmit.Background = AccentBrushCached;
+                        return;
+                    }
+                }
+            }
+
             if (poSuccess)
             {
                 entry.Synced = true;
