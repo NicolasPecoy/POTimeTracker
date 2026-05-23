@@ -442,8 +442,12 @@
                 <!-- FOOTER -->
                 <Border Background="{StaticResource BgBaseBrush}" BorderBrush="{StaticResource BorderBrush}"
                         BorderThickness="0,1,0,0" Padding="18,8" CornerRadius="0,0,16,16">
-                    <TextBlock x:Name="txtBaseUrlDisplay" FontSize="10" FontFamily="Consolas"
-                               Foreground="{StaticResource TextMutedBrush}" Opacity="0.6"/>
+                    <Grid>
+                        <TextBlock x:Name="txtJiraVersion" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Opacity="0.6"/>
+                        <TextBlock x:Name="txtBaseUrlDisplay" FontSize="10" FontFamily="Consolas"
+                                   Foreground="{StaticResource TextMutedBrush}" Opacity="0.6"
+                                   HorizontalAlignment="Right"/>
+                    </Grid>
                 </Border>
             </StackPanel>
             </ScrollViewer>

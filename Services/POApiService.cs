@@ -253,8 +253,9 @@ namespace POTimeTracker.Services
                     ci++;
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                LogService.Warn("ParseProjectsFromGeneXusGridData: error al parsear JSON de proyectos", ex);
                 return new List<POProject>();
             }
 
@@ -369,8 +370,9 @@ namespace POTimeTracker.Services
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                LogService.Warn("ParseTasksFromGeneXusGridData: error al parsear JSON de tareas", ex);
                 return added > 0;
             }
 
@@ -404,7 +406,10 @@ namespace POTimeTracker.Services
                         }
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    LogService.Warn("FindGeneXusRows: error al parsear JSON de proyectos", ex);
+                }
             }
 
             if (string.IsNullOrWhiteSpace(projectRow))
@@ -427,7 +432,10 @@ namespace POTimeTracker.Services
                         return (projectRow, index.ToString("0000"));
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogService.Warn("FindGeneXusRows: error al parsear JSON de tareas", ex);
+            }
 
             return (projectRow, "");
         }
@@ -453,7 +461,10 @@ namespace POTimeTracker.Services
                 rows[rowIndex][12] = comments;
                 form[key] = JsonSerializer.Serialize(rows);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogService.Warn("UpdateGridDataV: error al actualizar JSON del grid", ex);
+            }
         }
 
         public async Task<(bool Success, string Message)> SubmitTimeEntryAsync(TimeEntry entry, bool showAllTasks = false)
@@ -557,7 +568,11 @@ namespace POTimeTracker.Services
                 var html = await r.Content.ReadAsStringAsync();
                 return IsAuthenticatedTimeEntryPage(u, html);
             }
-            catch { return false; }
+            catch (Exception ex)
+            {
+                LogService.Warn("CheckSessionAsync: error al verificar sesion", ex);
+                return false;
+            }
         }
 
         public void Logout()
@@ -757,8 +772,9 @@ namespace POTimeTracker.Services
                 state["_EventRowId"] = eventRowId;
                 form["GXState"] = JsonSerializer.Serialize(state);
             }
-            catch
+            catch (Exception ex)
             {
+                LogService.Warn("SetGeneXusEvent: fallback a regex por error al deserializar GXState", ex);
                 form["GXState"] = Regex.Replace(
                     gxState,
                     @"""_EventName""\s*:\s*""[^""]*""",
