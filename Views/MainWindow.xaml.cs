@@ -14,6 +14,7 @@ using Hardcodet.Wpf.TaskbarNotification;
 using Microsoft.Win32;
 using POTimeTracker.Models;
 using POTimeTracker.Services;
+using System.Threading.Tasks;
 
 namespace POTimeTracker.Views
 {
@@ -79,6 +80,9 @@ namespace POTimeTracker.Views
             LoadPersistedEntries();
             StartDailyReminderTimer();
             PositionAboveTray();
+
+            SetVersionDisplay();
+            _ = CheckForUpdatesAsync();
 
             InitJira();
 
@@ -554,6 +558,10 @@ namespace POTimeTracker.Views
             {
                 await ReloadProjectsAsync();
             }
+            catch (Exception ex)
+            {
+                LogService.Error("ChkShowAllTasks_Changed: error al recargar proyectos", ex);
+            }
             finally
             {
                 cboProject.IsEnabled = true;
@@ -798,8 +806,16 @@ namespace POTimeTracker.Views
 
         private async System.Threading.Tasks.Task TryAutoConnectJiraAsync()
         {
-            var (ok, _, _) = await _jira.TestConnectionAsync();
-            UpdateJiraButtonState(ok);
+            try
+            {
+                var (ok, _, _) = await _jira.TestConnectionAsync();
+                UpdateJiraButtonState(ok);
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn("TryAutoConnectJiraAsync: error al conectar con Jira", ex);
+                UpdateJiraButtonState(false);
+            }
         }
 
         private void UpdateJiraButtonState(bool connected)
@@ -874,35 +890,44 @@ namespace POTimeTracker.Views
 
         private async System.Threading.Tasks.Task LoadJiraIssuesAsync()
         {
-            if (!_jira.IsConnected)
+            try
             {
-                var (cfg, token) = JiraConfigService.LoadConfig();
-                if (cfg != null && !string.IsNullOrEmpty(token))
+                if (!_jira.IsConnected)
                 {
-                    _jira.Configure(cfg.BaseUrl, cfg.Email, token);
-                    await _jira.TestConnectionAsync();
+                    var (cfg, token) = JiraConfigService.LoadConfig();
+                    if (cfg != null && !string.IsNullOrEmpty(token))
+                    {
+                        _jira.Configure(cfg.BaseUrl, cfg.Email, token);
+                        await _jira.TestConnectionAsync();
+                    }
+                }
+
+                JiraIssuesLoading.Visibility      = Visibility.Visible;
+                JiraIssuesScrollViewer.Visibility  = Visibility.Collapsed;
+                txtJiraIssuesEmpty.Visibility      = Visibility.Collapsed;
+                JiraHoursSummary.Visibility        = Visibility.Collapsed;
+                JiraIssuesPanel.Children.Clear();
+                _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
+
+                _jiraAllIssues = await _jira.GetMyIssuesAsync("");
+
+                JiraIssuesLoading.Visibility = Visibility.Collapsed;
+
+                if (_jiraAllIssues.Count == 0)
+                {
+                    txtJiraIssuesEmpty.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    JiraIssuesScrollViewer.Visibility = Visibility.Visible;
+                    BuildJiraIssuesList();
                 }
             }
-
-            JiraIssuesLoading.Visibility      = Visibility.Visible;
-            JiraIssuesScrollViewer.Visibility  = Visibility.Collapsed;
-            txtJiraIssuesEmpty.Visibility      = Visibility.Collapsed;
-            JiraHoursSummary.Visibility        = Visibility.Collapsed;
-            JiraIssuesPanel.Children.Clear();
-            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
-
-            _jiraAllIssues = await _jira.GetMyIssuesAsync("");
-
-            JiraIssuesLoading.Visibility = Visibility.Collapsed;
-
-            if (_jiraAllIssues.Count == 0)
+            catch (Exception ex)
             {
+                LogService.Error("LoadJiraIssuesAsync: error al cargar issues de Jira", ex);
+                JiraIssuesLoading.Visibility  = Visibility.Collapsed;
                 txtJiraIssuesEmpty.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                JiraIssuesScrollViewer.Visibility = Visibility.Visible;
-                BuildJiraIssuesList();
             }
 
             _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
@@ -1285,6 +1310,74 @@ namespace POTimeTracker.Views
             catch
             {
                 return AccentBrushCached;
+            }
+        }
+
+        // ══════════════════════════════════════════════════
+        // VERSION & AUTO-UPDATE
+        // ══════════════════════════════════════════════════
+
+        private void SetVersionDisplay()
+        {
+            var ver = UpdateService.GetCurrentVersion();
+            txtVersion.Text = $"v{ver} - Widget de registro";
+        }
+
+        private async Task CheckForUpdatesAsync()
+        {
+            try
+            {
+                await Task.Delay(5000);
+                var info = await UpdateService.CheckForUpdateAsync();
+                if (info == null) return;
+
+                Dispatcher.Invoke(() =>
+                {
+                    txtVersion.Text = $"v{UpdateService.GetCurrentVersion()} - Widget de registro  ★ v{info.Version} disponible";
+                    txtVersion.Foreground = AmberBrushCached;
+                    txtVersion.ToolTip = $"Nueva versión {info.Tag} disponible. Click para actualizar.";
+                });
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn("CheckForUpdatesAsync: error al verificar actualizaciones", ex);
+            }
+        }
+
+        private async void TxtVersion_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            var info = await UpdateService.CheckForUpdateAsync();
+            if (info == null)
+            {
+                MessageBox.Show("Ya tenés la última versión.", "Actualizaciones", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var msg = $"Nueva versión disponible: {info.Tag}\n\n¿Deseas descargar e instalar la actualización ahora?\n\n" +
+                      (string.IsNullOrEmpty(info.DownloadUrl)
+                          ? "Se abrirá la página de releases en el navegador."
+                          : "El ejecutable se descargará y la app se reiniciará automáticamente.");
+
+            var result = MessageBox.Show(msg, "Actualización disponible", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (result != MessageBoxResult.Yes) return;
+
+            if (!string.IsNullOrEmpty(info.DownloadUrl))
+            {
+                txtVersion.Text = "Descargando actualización...";
+                txtVersion.IsEnabled = false;
+                try
+                {
+                    await UpdateService.PerformUpdateAsync(info.DownloadUrl);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error al descargar: {ex.Message}\n\nSe abrirá la página de releases.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    Process.Start(new ProcessStartInfo(info.ReleasePageUrl) { UseShellExecute = true });
+                }
+            }
+            else
+            {
+                Process.Start(new ProcessStartInfo(info.ReleasePageUrl) { UseShellExecute = true });
             }
         }
     }

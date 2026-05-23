@@ -1,6 +1,6 @@
 # PO Time Tracker — Widget de Registro de Horas
 
-Widget de escritorio WPF moderno que se integra con **Project Open** para registrar horas de trabajo directamente desde la bandeja del sistema de Windows. Incluye un módulo opcional de integración con **Jira Cloud** para registrar worklogs en paralelo.
+Widget de escritorio WPF moderno que se integra con **Project Open** para registrar horas de trabajo directamente desde la bandeja del sistema de Windows. Incluye integración opcional con **Jira Cloud** y sistema de **actualizaciones automáticas** via GitHub.
 
 ![.NET 8](https://img.shields.io/badge/.NET-8.0-blue) ![WPF](https://img.shields.io/badge/UI-WPF-purple) ![Windows](https://img.shields.io/badge/OS-Windows-0078D6)
 
@@ -19,111 +19,232 @@ Widget de escritorio WPF moderno que se integra con **Project Open** para regist
 - **Log de errores** — Registro automático en archivos con rotación de 7 días
 - **Inicio automático** — Se registra en el inicio de Windows automáticamente
 
-### Jira Integration (nuevo)
+### Jira Integration
 - **Widget flotante independiente** — Mismo estilo visual que el widget de PO
 - **Autenticación segura** — API token encriptado con DPAPI
-- **Mis issues** — Lista los issues de Jira asignados al usuario, filtrables por proyecto
-- **Búsqueda** — Por clave exacta (ej. `PROJ-123`) o texto libre vía JQL
-- **Registro de worklogs** — Carga horas directamente en Jira con fecha y comentario
-- **Doble registro** — Desde el formulario de PO, opción para registrar en ambos sistemas al mismo tiempo con un solo clic
+- **Mis issues** — Lista los issues asignados, filtrables por proyecto y estado
+- **Búsqueda** — Por clave exacta (`PROJ-123`) o texto libre vía JQL
+- **Registro de worklogs** — Carga horas directamente en Jira
+- **Doble registro** — Desde el formulario de PO, registrá en ambos sistemas con un solo clic
+
+### Control de Versiones y Actualizaciones Automáticas
+- **Versión visible** — La versión actual aparece en el pie de ambas ventanas
+- **Auto-update** — Al iniciar, la app consulta GitHub para detectar nuevas versiones
+- **Un clic para actualizar** — Si hay una versión nueva, un aviso en el pie permite descargar e instalar sin salir de la app
 
 ---
 
 ## Requisitos
 
 - **Windows 10/11**
-- **.NET 8 SDK** — [Descargar](https://dotnet.microsoft.com/download/dotnet/8.0)
-- **Visual Studio 2022** (recomendado) o VS Code con C# extension
+- **.NET 8 SDK** — [Descargar](https://dotnet.microsoft.com/download/dotnet/8.0) *(solo para compilar — el .exe de release ya lo incluye)*
+- **Visual Studio 2022** *(opcional, solo si vas a modificar el código)*
 
 ---
 
-## Instalación y Build
+## Instalación rápida (usuarios finales)
 
-### Opción 1: Visual Studio
-```
-1. Abrir POTimeTracker.csproj en Visual Studio 2022
-2. Click derecho → "Restore NuGet Packages"
-3. Presionar F5 para compilar y ejecutar
-```
+1. Ir a la sección **[Releases](https://github.com/NicolasPecoy/POTimeTracker/releases/latest)**
+2. Descargar `POTimeTracker-X.Y.Z.exe`
+3. Copiar el `.exe` a cualquier carpeta (Escritorio, Documentos, etc.)
+4. Ejecutar — no requiere instalación, no requiere .NET instalado
 
-> **Nota:** Si los archivos de la integración Jira no aparecen en el Solution Explorer,
-> hacer click derecho en el proyecto → **Reload Project** (o cerrar y volver a abrir VS).
-> El SDK los incluye automáticamente, pero VS necesita refrescar cuando se agregan archivos externamente.
-
-### Opción 2: Línea de comandos
-```bash
-cd POTimeTracker
-dotnet restore
-dotnet build
-dotnet run
-```
-
-### Crear ejecutable publicable
-```bash
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
-```
-El `.exe` se genera en `bin/Release/net8.0-windows/win-x64/publish/`
+> La app detecta automáticamente si hay una versión más nueva al iniciar.
 
 ---
 
-## Configuración
-
-### Variables de entorno (`.env`)
-
-Las credenciales de conexión a Jira se cargan desde un archivo `.env` en la raíz del proyecto (o junto al `.exe` en producción). Este archivo **nunca se sube a Git**.
-
-**Pasos para configurar:**
-```bash
-# 1. Copiar el archivo de ejemplo
-cp .env.example .env
-
-# 2. Editar .env con los valores reales
-notepad .env
-```
-
-Contenido de `.env`:
-```env
-JIRA_BASE_URL=https://tu-empresa.atlassian.net
-JIRA_EMAIL=tu-email@empresa.com
-JIRA_TOKEN=tu_api_token_de_atlassian
-```
-
-> El API token se genera en [Atlassian Account → Security → API tokens](https://id.atlassian.com/manage-profile/security/api-tokens).  
-> Si no existe el `.env`, los campos de configuración aparecen vacíos y el usuario los completa manualmente en la UI.
-
----
-
-### PO Time Tracker — Primera ejecución
-1. Ejecutar `POTimeTracker.exe`
-2. Ingresar en la ventana de login:
-   - **Servidor**: `http://po.invenzis.com:8080` (preconfigurado)
-   - **Usuario** y **Contraseña** de PO
-3. Marcar "Recordar sesión" para auto-login
-
-### Jira Integration — Configuración
-1. Desde el widget de PO, hacer click en el botón **J** del header (o "Abrir Jira" en el tray)
-2. Completar los campos:
-   - **URL de Jira**: `https://tu-empresa.atlassian.net`
-   - **Email**: tu email de cuenta Atlassian
-   - **API Token**: generarlo en [Atlassian Account → Security → API tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
-   - **Proyecto por defecto** (opcional): clave del proyecto, ej. `PROJ`
-3. Click en **Conectar a Jira**
-
-El API token se guarda encriptado con DPAPI, igual que las credenciales de PO.
-
-### Uso diario
+## Uso diario
 
 **Solo PO:**
 - Click en el ícono del tray → seleccionar proyecto → tarea → horas → "Registrar Horas"
 
 **PO + Jira simultáneo:**
 - En el formulario de PO, tildar **"Registrar también en Jira"**
-- Escribir la clave del issue (ej. `PROJ-123`) — se valida automáticamente
-- Click en "Registrar Horas" → las horas se envían a PO y a Jira en un solo paso
+- Escribir la clave del issue (ej. `PROJ-123`)
+- Click en "Registrar Horas" → las horas se envían a PO y Jira en un solo paso
 
 **Solo Jira:**
-- Abrir el widget de Jira (botón J o tray)
-- Seleccionar un issue de la lista → ingresar horas y notas → "Registrar en Jira"
+- Abrir el widget de Jira (botón **J** del header o menú del tray)
+- Seleccionar un issue → ingresar horas y notas → "Registrar en Jira"
+
+---
+
+## Configuración de Jira
+
+1. Abrir el widget de Jira (botón **J** en el header)
+2. Completar los campos:
+   - **URL de Jira**: `https://tu-empresa.atlassian.net`
+   - **Email**: tu email de cuenta Atlassian
+   - **API Token**: generarlo en [Atlassian Account → Security → API tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
+   - **Proyecto por defecto** *(opcional)*: clave del proyecto, ej. `PROJ`
+3. Click en **Conectar a Jira**
+
+El API token se guarda encriptado con DPAPI — solo tu usuario de Windows puede leerlo.
+
+---
+
+## Guía de Control de Versiones y Releases
+
+> Esta sección explica desde cero cómo funciona el sistema de versiones y cómo publicar una nueva versión del programa.
+
+### ¿Qué es una versión?
+
+Una versión es un número con formato `X.Y.Z` (por ejemplo `1.0.0`, `1.2.3`, `2.0.0`):
+
+- **X (Major)** — Cambio grande o incompatible (ej: rediseño completo)
+- **Y (Minor)** — Feature nueva (ej: nueva integración, nueva pantalla)
+- **Z (Patch)** — Corrección de bug pequeño
+
+### ¿Dónde vive la versión?
+
+La versión está definida en una sola línea del archivo `POTimeTracker.csproj`:
+
+```xml
+<Version>1.0.0</Version>
+```
+
+Todo lo demás (la pantalla, el exe generado, el release de GitHub) la lee de ahí.
+
+---
+
+### Paso a Paso: Publicar una nueva versión
+
+#### Paso 1 — Hacer los cambios al código
+
+Modificar el código como siempre. Cuando estés satisfecho con los cambios, continuar al siguiente paso.
+
+#### Paso 2 — Actualizar la versión en el .csproj
+
+Abrir `POTimeTracker.csproj` y cambiar la línea de versión:
+
+```xml
+<!-- Antes -->
+<Version>1.0.0</Version>
+
+<!-- Después (ejemplo: agregaste una feature nueva) -->
+<Version>1.1.0</Version>
+```
+
+> **Regla simple:**
+> - Bug fix → incrementá el tercer número: `1.0.0` → `1.0.1`
+> - Feature nueva → incrementá el segundo número: `1.0.0` → `1.1.0`
+> - Cambio grande → incrementá el primero: `1.0.0` → `2.0.0`
+
+#### Paso 3 — Commitear los cambios
+
+En la terminal (PowerShell o CMD):
+
+```powershell
+git add .
+git commit -m "Versión 1.1.0 — descripción breve de los cambios"
+```
+
+#### Paso 4 — Crear un tag de Git
+
+Un **tag** es una marca en el historial de Git que identifica el punto exacto donde fue cada versión. El tag **debe tener el mismo número** que pusiste en el `.csproj`:
+
+```powershell
+git tag v1.1.0
+```
+
+#### Paso 5 — Subir el tag a GitHub
+
+```powershell
+git push origin master
+git push origin v1.1.0
+```
+
+> Esto es lo que **dispara automáticamente** la construcción del ejecutable en GitHub.
+
+#### Paso 6 — Esperar que GitHub Actions construya el ejecutable
+
+GitHub tiene un servidor propio que, al detectar el tag, hace lo siguiente sin que tengas que hacer nada:
+
+1. Descarga el código fuente
+2. Verifica que el número de versión en el `.csproj` coincida con el tag
+3. Compila el proyecto y genera un `.exe` que incluye todo (el runtime de .NET incluido)
+4. Crea un **Release** público en GitHub con el `.exe` adjunto
+
+Podés ver el progreso en:
+`https://github.com/NicolasPecoy/POTimeTracker/actions`
+
+Si todo sale bien, en unos minutos aparece el release en:
+`https://github.com/NicolasPecoy/POTimeTracker/releases`
+
+#### Paso 7 — Los usuarios reciben la actualización
+
+La próxima vez que alguien abra la app, verá en el pie de pantalla:
+
+```
+v1.0.0 - Widget de registro  ★ v1.1.0 disponible
+```
+
+Al hacer **click** en ese texto:
+- Si el `.exe` está adjunto al release: lo descarga automáticamente, reemplaza el exe y reinicia la app
+- Si no hay `.exe` adjunto: abre el navegador en la página de releases para que lo descargue manualmente
+
+---
+
+### Verificar que el número es correcto (el workflow lo chequea)
+
+El workflow de GitHub Actions tiene un paso que **falla el build** si el tag no coincide con el `.csproj`. Por ejemplo, si pusiste `v1.2.0` como tag pero el `.csproj` dice `1.1.0`, el build falla con:
+
+```
+MISMATCH: .csproj dice '1.1.0' pero el tag dice '1.2.0'.
+Actualizá <Version> en el .csproj antes de taggear.
+```
+
+Esto evita publicar accidentalmente un exe con la versión incorrecta.
+
+---
+
+### Resumen rápido (cheat sheet)
+
+```powershell
+# 1. Editar POTimeTracker.csproj → cambiar <Version>X.Y.Z</Version>
+
+# 2. Commitear
+git add POTimeTracker.csproj
+git commit -m "Bump version to X.Y.Z"
+
+# 3. Taggear y pushear
+git push origin master
+git tag vX.Y.Z
+git push origin vX.Y.Z
+
+# Listo — GitHub hace el resto automáticamente
+```
+
+---
+
+## Build manual (para desarrolladores)
+
+### Compilar y ejecutar en modo desarrollo
+
+```powershell
+cd POTimeTracker
+dotnet restore
+dotnet run
+```
+
+### Generar ejecutable self-contained manualmente
+
+```powershell
+dotnet publish POTimeTracker.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -p:PublishSingleFile=true `
+  -o publish/
+```
+
+El `.exe` queda en `publish\POTimeTracker.exe`.
+
+### En Visual Studio 2022
+
+1. Abrir `POTimeTracker.csproj`
+2. Click derecho → **Restore NuGet Packages**
+3. Presionar **F5** para compilar y ejecutar
 
 ---
 
@@ -131,60 +252,37 @@ El API token se guarda encriptado con DPAPI, igual que las credenciales de PO.
 
 ```
 POTimeTracker/
+├── .github/
+│   └── workflows/
+│       └── release.yml             # Build automático y publicación en GitHub
+│
+├── POTimeTracker.csproj            # Proyecto .NET 8 WPF (contiene <Version>)
 ├── App.xaml / App.xaml.cs          # Entry point y manejo de errores globales
-├── POTimeTracker.csproj            # Proyecto .NET 8 WPF
 │
 ├── Themes/
 │   └── DarkTheme.xaml             # Tema oscuro (colores, estilos, control templates)
 │
 ├── Views/
-│   ├── MainWindow.xaml/.cs        # Widget principal de PO
-│   ├── JiraWindow.xaml/.cs        # Widget de integración Jira
+│   ├── MainWindow.xaml/.cs        # Widget principal de PO (muestra versión en footer)
+│   ├── JiraWindow.xaml/.cs        # Widget de integración Jira (muestra versión en footer)
 │   ├── SettingsWindow.xaml/.cs    # Ventana de configuración
 │   └── ReminderWindow.xaml/.cs    # Recordatorio diario de horas
 │
 ├── Models/
-│   ├── Models.cs                  # POProject, POTask, TimeEntry, LoginCredentials, WeekDay
-│   └── JiraModels.cs             # JiraConfig, JiraProject, JiraIssue
+│   ├── Models.cs                  # POProject, POTask, TimeEntry, LoginCredentials
+│   └── JiraModels.cs              # JiraConfig, JiraProject, JiraIssue
 │
 ├── Services/
-│   ├── POApiService.cs            # Cliente HTTP para PO (login, proyectos, registro de horas)
+│   ├── POApiService.cs            # Cliente HTTP para PO
 │   ├── JiraApiService.cs          # Cliente HTTP para Jira REST API v3
 │   ├── JiraConfigService.cs       # Almacenamiento seguro de config Jira (DPAPI)
 │   ├── CredentialService.cs       # Credenciales PO y entradas locales (DPAPI)
+│   ├── UpdateService.cs           # Detección y descarga de actualizaciones de GitHub
 │   └── LogService.cs              # Logger con rotación de archivos diaria
 │
 └── Assets/
     └── icon.ico                   # Ícono de la aplicación
 ```
-
----
-
-## Cómo funciona la integración con PO
-
-El widget se comunica con Project Open de la misma forma que un navegador:
-
-1. **Login**: GET `sgplogin.aspx` → extrae `__VIEWSTATE` y campos GeneXus → POST con credenciales
-2. **Proyectos/Tareas**: GET `registrodehoras.aspx` → parsea grids GeneXus (`FsgridproyectosContainerDataV`, `FsgridhorasContainerDataV_*`)
-3. **Registro**: GET fresh page state → localiza la celda exacta del grid → POST con evento `CONFIRMAR`
-
-La sesión se renueva automáticamente cada N horas (configurable, default 3h).
-
----
-
-## Cómo funciona la integración con Jira
-
-Usa la **Jira Cloud REST API v3** con autenticación Basic (email + API token):
-
-| Operación | Endpoint |
-|-----------|----------|
-| Verificar conexión | `GET /rest/api/3/myself` |
-| Listar proyectos | `GET /rest/api/3/project/search` |
-| Buscar issues (JQL) | `GET /rest/api/3/search?jql=...` |
-| Obtener issue | `GET /rest/api/3/issue/{key}` |
-| Registrar worklog | `POST /rest/api/3/issue/{key}/worklog` |
-
-El worklog se registra con `timeSpentSeconds` (precisión exacta) y el campo `started` en formato ISO 8601 con offset de timezone local.
 
 ---
 
@@ -203,17 +301,57 @@ Todos los archivos se guardan en `%LOCALAPPDATA%\POTimeTracker\`:
 
 ---
 
+## Cómo funciona la integración con PO
+
+El widget se comunica con Project Open de la misma forma que un navegador:
+
+1. **Login**: GET `sgplogin.aspx` → extrae `__VIEWSTATE` y campos GeneXus → POST con credenciales
+2. **Proyectos/Tareas**: GET `registrodehoras.aspx` → parsea grids GeneXus
+3. **Registro**: GET fresh page state → localiza la celda exacta del grid → POST con evento `CONFIRMAR`
+
+La sesión se renueva automáticamente cada N horas (configurable, default 3h).
+
+---
+
+## Cómo funciona la integración con Jira
+
+Usa la **Jira Cloud REST API v3** con autenticación Basic (email + API token):
+
+| Operación | Endpoint |
+|-----------|----------|
+| Verificar conexión | `GET /rest/api/3/myself` |
+| Listar proyectos | `GET /rest/api/3/project/search` |
+| Buscar issues (JQL) | `GET /rest/api/3/search?jql=...` |
+| Registrar worklog | `POST /rest/api/3/issue/{key}/worklog` |
+
+---
+
+## Cómo funciona el sistema de actualizaciones
+
+Al iniciar la app (5 segundos después para no bloquear la UI), el servicio de actualización:
+
+1. Consulta `https://api.github.com/repos/NicolasPecoy/POTimeTracker/releases/latest`
+2. Compara el número de versión del release con el del exe que está corriendo
+3. Si hay una versión más nueva:
+   - El texto del footer cambia a amarillo con el aviso
+   - Al hacer click, descarga el `.exe` nuevo a una carpeta temporal
+   - Lanza un script que espera a que la app cierre, reemplaza el `.exe` y la reinicia
+4. Si ya tenés la última versión, muestra un mensaje confirmándolo
+
+---
+
 ## Seguridad
 
 - Las credenciales de PO y el API token de Jira se cifran con **Windows DPAPI**
 - Solo el usuario de Windows que los guardó puede descifrarlos
 - No se transmiten datos a ningún servidor externo salvo PO y Jira
+- Las actualizaciones se descargan directamente de GitHub (HTTPS)
 
 ---
 
 ## Dependencias NuGet
 
-| Paquete | Uso |
-|---------|-----|
-| `Hardcodet.NotifyIcon.Wpf` v1.1.0 | Ícono en la bandeja del sistema |
-| `System.Security.Cryptography.ProtectedData` v8.0.0 | Cifrado DPAPI |
+| Paquete | Versión | Uso |
+|---------|---------|-----|
+| `Hardcodet.NotifyIcon.Wpf` | 1.1.0 | Ícono en la bandeja del sistema |
+| `System.Security.Cryptography.ProtectedData` | 8.0.0 | Cifrado DPAPI |

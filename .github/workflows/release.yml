@@ -1,0 +1,92 @@
+name: Build & Release
+
+# Dispara cuando se pushea un tag con formato v1.2.3
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write   # necesario para crear el Release en GitHub
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      # 1. Descargar el código fuente
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # 2. Instalar .NET 8 SDK
+      - name: Instalar .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # 3. Extraer la versión del tag (quita la 'v' inicial, ej: v1.2.3 → 1.2.3)
+      - name: Extraer versión del tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $ver = $tag.TrimStart('v')
+          echo "VERSION=$ver" >> $env:GITHUB_OUTPUT
+          echo "TAG=$tag"     >> $env:GITHUB_OUTPUT
+          Write-Host "Tag: $tag  |  Versión: $ver"
+
+      # 4. Verificar que la versión del tag coincide con la del .csproj
+      - name: Verificar versión en .csproj
+        shell: pwsh
+        run: |
+          $csprojVersion = (Select-String -Path POTimeTracker.csproj -Pattern '<Version>(.*?)</Version>').Matches[0].Groups[1].Value
+          $tagVersion    = "${{ steps.version.outputs.VERSION }}"
+          if ($csprojVersion -ne $tagVersion) {
+            Write-Error "MISMATCH: .csproj dice '$csprojVersion' pero el tag dice '$tagVersion'. Actualizá <Version> en el .csproj antes de taggear."
+            exit 1
+          }
+          Write-Host "OK: versión $csprojVersion coincide con el tag."
+
+      # 5. Restaurar paquetes NuGet
+      - name: Restaurar dependencias
+        run: dotnet restore
+
+      # 6. Compilar y publicar — exe único self-contained para Windows x64
+      - name: Publicar (self-contained, single file)
+        run: |
+          dotnet publish POTimeTracker.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:Version=${{ steps.version.outputs.VERSION }} `
+            -o publish/
+
+      # 7. Renombrar el exe para incluir la versión
+      - name: Renombrar ejecutable
+        shell: pwsh
+        run: |
+          $src = "publish\POTimeTracker.exe"
+          $dst = "publish\POTimeTracker-${{ steps.version.outputs.VERSION }}.exe"
+          Rename-Item -Path $src -NewName (Split-Path $dst -Leaf)
+          Write-Host "Generado: $dst"
+
+      # 8. Crear el Release en GitHub y adjuntar el exe
+      - name: Crear GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: "POTimeTracker ${{ steps.version.outputs.TAG }}"
+          body: |
+            ## POTimeTracker ${{ steps.version.outputs.TAG }}
+
+            ### Instalación
+            1. Descargá `POTimeTracker-${{ steps.version.outputs.VERSION }}.exe`
+            2. Copiá el `.exe` a cualquier carpeta (Escritorio, Documentos, etc.)
+            3. Ejecutá el `.exe` — no requiere instalación
+
+            > La aplicación incluye el runtime de .NET — no necesitás instalar nada más.
+          files: publish/POTimeTracker-${{ steps.version.outputs.VERSION }}.exe
+          draft: false
+          prerelease: false

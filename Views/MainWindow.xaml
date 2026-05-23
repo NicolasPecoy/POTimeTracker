@@ -402,7 +402,7 @@
                 <Border Background="{StaticResource BgBaseBrush}" BorderBrush="{StaticResource BorderBrush}"
                         BorderThickness="0,1,0,0" Padding="18,8" CornerRadius="0,0,16,16">
                     <Grid>
-                        <TextBlock Text="v1.0 - Widget de registro" FontSize="10" Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock x:Name="txtVersion" Text="v1.0.0 - Widget de registro" FontSize="10" Foreground="{StaticResource TextMutedBrush}" Cursor="Hand" ToolTip="Buscar actualizaciones" MouseLeftButtonUp="TxtVersion_Click"/>
                         <TextBlock x:Name="txtServerDisplay" Text="po.invenzis.com:8080"
                                    FontSize="10" FontFamily="Consolas" Foreground="{StaticResource TextMutedBrush}"
                                    Opacity="0.6" HorizontalAlignment="Right"/>

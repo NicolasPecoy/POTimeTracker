@@ -120,12 +120,14 @@ namespace POTimeTracker.Services
                 CurrentUserAccountId = GetString(json, "accountId");
                 return (true, name, "Conexion exitosa");
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException ex)
             {
+                LogService.Warn("JiraApiService.TestConnectionAsync: timeout", ex);
                 return (false, "", "Timeout: Jira no respondio");
             }
             catch (Exception ex)
             {
+                LogService.Error("JiraApiService.TestConnectionAsync: error de conexion", ex);
                 return (false, "", $"Error de conexion: {ex.Message}");
             }
         }
@@ -266,8 +268,9 @@ namespace POTimeTracker.Services
 
                 return (false, $"Jira {(int)response.StatusCode}: {ExtractJiraError(respBody)}");
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException ex)
             {
+                LogService.Warn($"JiraApiService.LogWorkAsync({issueKey}): timeout", ex);
                 return (false, "Timeout al conectar con Jira");
             }
             catch (Exception ex)
@@ -460,7 +463,10 @@ namespace POTimeTracker.Services
                     if (parts.Count > 0) return string.Join(", ", parts);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogService.Warn("JiraApiService.ExtractJiraError: no se pudo parsear el error JSON", ex);
+            }
             return body.Length > 300 ? body[..300] : body;
         }
 

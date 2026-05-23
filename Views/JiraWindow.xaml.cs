@@ -57,49 +57,57 @@ namespace POTimeTracker.Views
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            _selectedDate = DateTime.Today;
-            UpdateDateDisplay();
-
-            var (config, token) = JiraConfigService.LoadConfig();
-
-            // Resolve effective credentials: saved config takes priority, admin defaults as fallback
-            string effectiveUrl     = !string.IsNullOrWhiteSpace(config?.BaseUrl) ? config!.BaseUrl : DefaultBaseUrl;
-            string effectiveEmail   = !string.IsNullOrWhiteSpace(config?.Email)   ? config!.Email   : DefaultEmail;
-            string effectiveToken   = !string.IsNullOrWhiteSpace(token)           ? token           : DefaultToken;
-            string effectiveProjKey = config?.DefaultProjectKey ?? "";
-
-            // Pre-fill config form with effective values
-            txtBaseUrl.Text        = effectiveUrl;
-            txtEmail.Text          = effectiveEmail;
-            txtDefaultProject.Text = effectiveProjKey;
-            txtApiToken.Password   = effectiveToken;
-
-            // Always attempt auto-connect
-            _jira.Configure(effectiveUrl, effectiveEmail, effectiveToken);
-            ShowConfigLoading(true);
-            var (ok, user, _) = await _jira.TestConnectionAsync();
-            ShowConfigLoading(false);
-
-            if (ok)
+            try
             {
-                var effectiveConfig = config ?? new JiraConfig
-                {
-                    BaseUrl           = effectiveUrl,
-                    Email             = effectiveEmail,
-                    DefaultProjectKey = effectiveProjKey,
-                    Enabled           = true
-                };
-                await SwitchToMainViewAsync(effectiveConfig, user);
-                return;
-            }
+                _selectedDate = DateTime.Today;
+                UpdateDateDisplay();
+                txtJiraVersion.Text = $"v{UpdateService.GetCurrentVersion()} - Jira";
 
-            ConfigView.Visibility = Visibility.Visible;
-            MainView.Visibility   = Visibility.Collapsed;
-            ShowConfigLoading(false);
-            HideConfigError();
-            btnConnect.IsEnabled = true;
-            btnConnect.Content   = "Conectar a Jira";
-            RePositionAsync();
+                var (config, token) = JiraConfigService.LoadConfig();
+
+                // Resolve effective credentials: saved config takes priority, admin defaults as fallback
+                string effectiveUrl     = !string.IsNullOrWhiteSpace(config?.BaseUrl) ? config!.BaseUrl : DefaultBaseUrl;
+                string effectiveEmail   = !string.IsNullOrWhiteSpace(config?.Email)   ? config!.Email   : DefaultEmail;
+                string effectiveToken   = !string.IsNullOrWhiteSpace(token)           ? token           : DefaultToken;
+                string effectiveProjKey = config?.DefaultProjectKey ?? "";
+
+                // Pre-fill config form with effective values
+                txtBaseUrl.Text        = effectiveUrl;
+                txtEmail.Text          = effectiveEmail;
+                txtDefaultProject.Text = effectiveProjKey;
+                txtApiToken.Password   = effectiveToken;
+
+                // Always attempt auto-connect
+                _jira.Configure(effectiveUrl, effectiveEmail, effectiveToken);
+                ShowConfigLoading(true);
+                var (ok, user, _) = await _jira.TestConnectionAsync();
+                ShowConfigLoading(false);
+
+                if (ok)
+                {
+                    var effectiveConfig = config ?? new JiraConfig
+                    {
+                        BaseUrl           = effectiveUrl,
+                        Email             = effectiveEmail,
+                        DefaultProjectKey = effectiveProjKey,
+                        Enabled           = true
+                    };
+                    await SwitchToMainViewAsync(effectiveConfig, user);
+                    return;
+                }
+
+                ConfigView.Visibility = Visibility.Visible;
+                MainView.Visibility   = Visibility.Collapsed;
+                ShowConfigLoading(false);
+                HideConfigError();
+                btnConnect.IsEnabled = true;
+                btnConnect.Content   = "Conectar a Jira";
+                RePositionAsync();
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("JiraWindow.Window_Loaded: error inesperado al iniciar", ex);
+            }
         }
 
         private void PositionAboveTray()
@@ -150,18 +158,28 @@ namespace POTimeTracker.Views
 
         private async System.Threading.Tasks.Task LoadIssuesAsync()
         {
-            ShowIssuesLoading(true);
-            IssuesPanel.Children.Clear();
-            _selectedIssue             = null;
-            IssuDetailPanel.Visibility = Visibility.Collapsed;
+            try
+            {
+                ShowIssuesLoading(true);
+                IssuesPanel.Children.Clear();
+                _selectedIssue             = null;
+                IssuDetailPanel.Visibility = Visibility.Collapsed;
 
-            var selectedProject = cboProject.SelectedItem as JiraProject;
-            var projectKey      = selectedProject?.Id == "" ? "" : selectedProject?.Key ?? "";
+                var selectedProject = cboProject.SelectedItem as JiraProject;
+                var projectKey      = selectedProject?.Id == "" ? "" : selectedProject?.Key ?? "";
 
-            _allIssues = await _jira.GetMyIssuesAsync(projectKey, includeDone: _showCompleted);
-            _issues    = new List<JiraIssue>(_allIssues);
-            BuildIssuesList();
-            ShowIssuesLoading(false);
+                _allIssues = await _jira.GetMyIssuesAsync(projectKey, includeDone: _showCompleted);
+                _issues    = new List<JiraIssue>(_allIssues);
+                BuildIssuesList();
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("JiraWindow.LoadIssuesAsync: error al cargar issues", ex);
+            }
+            finally
+            {
+                ShowIssuesLoading(false);
+            }
         }
 
         // ══════════════════════════════════════════════════
@@ -170,6 +188,8 @@ namespace POTimeTracker.Views
 
         private async void BtnConnect_Click(object sender, RoutedEventArgs e)
         {
+            try
+            {
             var baseUrl = txtBaseUrl.Text.Trim().TrimEnd('/');
             var email   = txtEmail.Text.Trim();
             var token   = txtApiToken.Password.Trim();   // trim whitespace/newlines from copy-paste
@@ -225,6 +245,14 @@ namespace POTimeTracker.Views
                     ? $"{message}\n\nVerifica: el email debe ser el de tu cuenta Atlassian y el API Token debe generarse en id.atlassian.com → Seguridad → API tokens."
                     : message;
                 ShowConfigError(hint);
+                ShowConfigLoading(false);
+                btnConnect.IsEnabled = true;
+            }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("JiraWindow.BtnConnect_Click: error inesperado al conectar", ex);
+                ShowConfigError("Error inesperado al conectar. Revisá los logs.");
                 ShowConfigLoading(false);
                 btnConnect.IsEnabled = true;
             }
@@ -394,18 +422,27 @@ namespace POTimeTracker.Views
             _selectedIssue             = null;
             IssuDetailPanel.Visibility = Visibility.Collapsed;
 
-            if (System.Text.RegularExpressions.Regex.IsMatch(query, @"^[A-Za-z]+-\d+$"))
+            try
             {
-                var issue = await _jira.GetIssueAsync(query);
-                _allIssues = issue != null ? new List<JiraIssue> { issue } : new();
+                if (System.Text.RegularExpressions.Regex.IsMatch(query, @"^[A-Za-z]+-\d+$"))
+                {
+                    var issue = await _jira.GetIssueAsync(query);
+                    _allIssues = issue != null ? new List<JiraIssue> { issue } : new();
+                }
+                else
+                {
+                    var jql = $"text ~ \"{query}\" AND assignee = currentUser() ORDER BY updated DESC";
+                    _allIssues = await _jira.SearchIssuesAsync(jql, 30);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                var jql = $"text ~ \"{query}\" AND assignee = currentUser() ORDER BY updated DESC";
-                _allIssues = await _jira.SearchIssuesAsync(jql, 30);
+                LogService.Error($"JiraWindow.TxtSearch_KeyDown: error al buscar '{query}'", ex);
             }
-
-            ShowIssuesLoading(false);
+            finally
+            {
+                ShowIssuesLoading(false);
+            }
             ApplyFilters();
         }
 
@@ -436,21 +473,31 @@ namespace POTimeTracker.Views
             btnSubmit.IsEnabled = false;
             btnSubmit.Content   = "Enviando...";
 
-            var (success, message) = await _jira.LogWorkAsync(
-                _selectedIssue.Key, hours, date, txtNotes.Text.Trim());
+            try
+            {
+                var (success, message) = await _jira.LogWorkAsync(
+                    _selectedIssue.Key, hours, date, txtNotes.Text.Trim());
 
-            if (success)
-            {
-                btnSubmit.Content    = "Registrado!";
-                btnSubmit.Background = GreenBrush;
-                ShowStatusMessage($"{hours:0.0}h en {_selectedIssue.Key}", false);
-                _ = LoadDailyWorklogsAsync();
+                if (success)
+                {
+                    btnSubmit.Content    = "Registrado!";
+                    btnSubmit.Background = GreenBrush;
+                    ShowStatusMessage($"{hours:0.0}h en {_selectedIssue.Key}", false);
+                    _ = LoadDailyWorklogsAsync();
+                }
+                else
+                {
+                    btnSubmit.Content    = "Error";
+                    btnSubmit.Background = RedBrush;
+                    ShowStatusMessage(message, true);
+                }
             }
-            else
+            catch (Exception ex)
             {
+                LogService.Error($"JiraWindow.BtnSubmit_Click: error al registrar en {_selectedIssue.Key}", ex);
                 btnSubmit.Content    = "Error";
                 btnSubmit.Background = RedBrush;
-                ShowStatusMessage(message, true);
+                ShowStatusMessage("Error inesperado al registrar", true);
             }
 
             await System.Threading.Tasks.Task.Delay(1800);
@@ -474,23 +521,33 @@ namespace POTimeTracker.Views
             UpdateWorklogsSummary(new List<JiraWorklogEntry>());
             RePositionAsync();
 
-            var worklogs = await _jira.GetMyWorklogsForDateAsync(_selectedDate);
-
-            WorklogsLoading.Visibility = Visibility.Collapsed;
-            txtWorklogCount.Text       = worklogs.Count.ToString();
-
-            if (worklogs.Count == 0)
+            try
             {
+                var worklogs = await _jira.GetMyWorklogsForDateAsync(_selectedDate);
+
+                WorklogsLoading.Visibility = Visibility.Collapsed;
+                txtWorklogCount.Text       = worklogs.Count.ToString();
+
+                if (worklogs.Count == 0)
+                {
+                    txtWorklogsEmpty.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    WorklogsScrollViewer.Height = worklogs.Count > 2 ? 112 : double.NaN;
+                    foreach (var entry in worklogs)
+                        WorklogsPanel.Children.Add(BuildWorklogItem(entry));
+                }
+
+                UpdateWorklogsSummary(worklogs);
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("JiraWindow.LoadDailyWorklogsAsync: error al cargar worklogs", ex);
+                WorklogsLoading.Visibility  = Visibility.Collapsed;
                 txtWorklogsEmpty.Visibility = Visibility.Visible;
             }
-            else
-            {
-                WorklogsScrollViewer.Height = worklogs.Count > 2 ? 112 : double.NaN;
-                foreach (var entry in worklogs)
-                    WorklogsPanel.Children.Add(BuildWorklogItem(entry));
-            }
 
-            UpdateWorklogsSummary(worklogs);
             RePositionAsync();
         }
 
@@ -622,7 +679,8 @@ namespace POTimeTracker.Views
         private async void CboProject_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (MainView.Visibility != Visibility.Visible) return;
-            await LoadIssuesAsync();
+            try { await LoadIssuesAsync(); }
+            catch (Exception ex) { LogService.Error("JiraWindow.CboProject_SelectionChanged", ex); }
         }
 
         private async void BtnRefresh_Click(object sender, RoutedEventArgs e)
@@ -631,7 +689,8 @@ namespace POTimeTracker.Views
             _activeStatusFilters.Clear();
             _showCompleted = false;
             FilterActiveDot.Visibility = Visibility.Collapsed;
-            await LoadIssuesAsync();
+            try { await LoadIssuesAsync(); }
+            catch (Exception ex) { LogService.Error("JiraWindow.BtnRefresh_Click", ex); }
         }
 
         private void BtnFilter_Click(object sender, RoutedEventArgs e)
@@ -719,7 +778,8 @@ namespace POTimeTracker.Views
             FilterPopup.IsOpen = false;
             _activeStatusFilters.Clear();
             FilterActiveDot.Visibility = _showCompleted ? Visibility.Visible : Visibility.Collapsed;
-            await LoadIssuesAsync();
+            try { await LoadIssuesAsync(); }
+            catch (Exception ex) { LogService.Error("JiraWindow.CompletedFilter_Changed", ex); }
         }
 
         private void ChkProxy_Changed(object sender, RoutedEventArgs e)
