@@ -15,6 +15,9 @@ using Microsoft.Win32;
 using POTimeTracker.Models;
 using POTimeTracker.Services;
 using System.Threading.Tasks;
+using System.Threading;
+using System.Windows.Input;
+using System.Windows.Shapes;
 
 namespace POTimeTracker.Views
 {
@@ -24,8 +27,13 @@ namespace POTimeTracker.Views
         private readonly JiraApiService _jira = new();
         private JiraWindow? _jiraWindow;
 
-        private List<JiraIssue>         _jiraAllIssues      = new();
-        private Dictionary<string, double> _jiraSelectedIssues = new();
+        private List<JiraIssue>            _jiraAllIssues           = new();
+        private List<JiraIssue>            _jiraFilteredIssues      = new();
+        private List<JiraProject>          _jiraProjects            = new();
+        private Dictionary<string, double> _jiraSelectedIssues      = new();
+        private HashSet<string>            _jiraActiveStatusFilters = new();
+        private bool                       _jiraShowCompleted       = false;
+        private CancellationTokenSource?   _jiraSearchCts;
 
         private DateTime _currentDate = DateTime.Today;
         private DateTime _projectsLoadedForDate = DateTime.MinValue;
@@ -515,19 +523,43 @@ namespace POTimeTracker.Views
             }
         }
 
-        private void BtnDeleteEntry_Click(object sender, RoutedEventArgs e)
+        private async void BtnDeleteEntry_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn && btn.Tag is string id)
+            if (sender is not Button btn || btn.Tag is not string id) return;
+
+            var key = DateKey(_currentDate);
+            if (!_entries.ContainsKey(key)) return;
+
+            var entry = _entries[key].FirstOrDefault(x => x.Id == id);
+            if (entry == null) return;
+
+            // Zero out hours in PO before removing from local cache
+            if (_api.IsLoggedIn && !string.IsNullOrEmpty(entry.TaskId))
             {
-                var key = DateKey(_currentDate);
-                if (_entries.ContainsKey(key))
+                var zeroEntry = new TimeEntry
                 {
-                    _entries[key].RemoveAll(x => x.Id == id);
-                    CredentialService.SaveEntries(_entries);
-                    RefreshAll();
-                    ShowStatusMessage("Registro eliminado", false);
+                    Date           = entry.Date,
+                    ProjectId      = entry.ProjectId,
+                    TaskId         = entry.TaskId,
+                    GxTaskRowId    = entry.GxTaskRowId,
+                    GxProjectRowId = entry.GxProjectRowId,
+                    Hours          = 0,
+                    Notes          = ""
+                };
+                try
+                {
+                    await _api.SubmitTimeEntryAsync(zeroEntry, chkShowAllTasks.IsChecked == true);
+                }
+                catch (Exception ex)
+                {
+                    LogService.Warn("BtnDeleteEntry_Click: no se pudo poner a 0 en PO", ex);
                 }
             }
+
+            _entries[key].RemoveAll(x => x.Id == id);
+            CredentialService.SaveEntries(_entries);
+            RefreshAll();
+            ShowStatusMessage("Registro eliminado", false);
         }
 
         // ══════════════════════════════════════════════════
@@ -883,6 +915,11 @@ namespace POTimeTracker.Views
             {
                 _jiraSelectedIssues.Clear();
                 _jiraAllIssues.Clear();
+                _jiraFilteredIssues.Clear();
+                _jiraActiveStatusFilters.Clear();
+                _jiraShowCompleted = false;
+                JiraFilterActiveDot.Visibility = Visibility.Collapsed;
+                txtJiraSearch.Text = "Buscar issue...";
             }
 
             _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
@@ -902,6 +939,12 @@ namespace POTimeTracker.Views
                     }
                 }
 
+                // Reset filter state
+                _jiraActiveStatusFilters.Clear();
+                _jiraShowCompleted = false;
+                JiraFilterActiveDot.Visibility = Visibility.Collapsed;
+                txtJiraSearch.Text = "Buscar issue...";
+
                 JiraIssuesLoading.Visibility      = Visibility.Visible;
                 JiraIssuesScrollViewer.Visibility  = Visibility.Collapsed;
                 txtJiraIssuesEmpty.Visibility      = Visibility.Collapsed;
@@ -909,11 +952,26 @@ namespace POTimeTracker.Views
                 JiraIssuesPanel.Children.Clear();
                 _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
 
+                // Load projects for project filter combo
+                try { _jiraProjects = await _jira.GetProjectsAsync(); }
+                catch { _jiraProjects = new List<JiraProject>(); }
+
+                var projectItems = new List<JiraProject>
+                {
+                    new JiraProject { Key = "Todos", Name = "Todos los proyectos", Id = "" }
+                };
+                projectItems.AddRange(_jiraProjects);
+                cboJiraProjectFilter.SelectionChanged -= CboJiraProjectFilter_SelectionChanged;
+                cboJiraProjectFilter.ItemsSource = projectItems;
+                cboJiraProjectFilter.SelectedIndex = 0;
+                cboJiraProjectFilter.SelectionChanged += CboJiraProjectFilter_SelectionChanged;
+
                 _jiraAllIssues = await _jira.GetMyIssuesAsync("");
+                _jiraFilteredIssues = new List<JiraIssue>(_jiraAllIssues);
 
                 JiraIssuesLoading.Visibility = Visibility.Collapsed;
 
-                if (_jiraAllIssues.Count == 0)
+                if (_jiraFilteredIssues.Count == 0)
                 {
                     txtJiraIssuesEmpty.Visibility = Visibility.Visible;
                 }
@@ -933,10 +991,54 @@ namespace POTimeTracker.Views
             _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
+        private async System.Threading.Tasks.Task LoadJiraIssuesFromFilterAsync()
+        {
+            try
+            {
+                if (!_jira.IsConnected)
+                {
+                    var (cfg, token) = JiraConfigService.LoadConfig();
+                    if (cfg != null && !string.IsNullOrEmpty(token))
+                    {
+                        _jira.Configure(cfg.BaseUrl, cfg.Email, token);
+                        await _jira.TestConnectionAsync();
+                    }
+                }
+
+                JiraIssuesLoading.Visibility      = Visibility.Visible;
+                JiraIssuesScrollViewer.Visibility  = Visibility.Collapsed;
+                txtJiraIssuesEmpty.Visibility      = Visibility.Collapsed;
+                JiraIssuesPanel.Children.Clear();
+                _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
+
+                var selectedProj = cboJiraProjectFilter.SelectedItem as JiraProject;
+                var projectKey   = selectedProj?.Id == "" ? "" : selectedProj?.Key ?? "";
+                _jiraAllIssues   = await _jira.GetMyIssuesAsync(projectKey, includeDone: _jiraShowCompleted);
+
+                JiraIssuesLoading.Visibility = Visibility.Collapsed;
+                _jiraFilteredIssues = new List<JiraIssue>(_jiraAllIssues);
+
+                if (_jiraFilteredIssues.Count == 0)
+                    txtJiraIssuesEmpty.Visibility = Visibility.Visible;
+                else
+                {
+                    JiraIssuesScrollViewer.Visibility = Visibility.Visible;
+                    BuildJiraIssuesList();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("LoadJiraIssuesFromFilterAsync: error al cargar issues", ex);
+                JiraIssuesLoading.Visibility  = Visibility.Collapsed;
+                txtJiraIssuesEmpty.Visibility = Visibility.Visible;
+            }
+            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
         private void BuildJiraIssuesList()
         {
             JiraIssuesPanel.Children.Clear();
-            foreach (var issue in _jiraAllIssues)
+            foreach (var issue in _jiraFilteredIssues)
                 JiraIssuesPanel.Children.Add(BuildJiraIssueRow(issue));
             UpdateJiraHoursSummary();
         }
@@ -1069,6 +1171,221 @@ namespace POTimeTracker.Views
             "indeterminate" => new SolidColorBrush(Color.FromRgb(251, 191, 36)),
             _               => new SolidColorBrush(Color.FromRgb(38, 132, 255))
         };
+
+        // ══════════════════════════════════════════════════
+        // JIRA FILTER BAR
+        // ══════════════════════════════════════════════════
+
+        private void ApplyJiraFilters()
+        {
+            var query = txtJiraSearch.Text == "Buscar issue..." ? "" : txtJiraSearch.Text.Trim().ToLower();
+
+            var filtered = _jiraAllIssues.AsEnumerable();
+            if (!string.IsNullOrEmpty(query))
+                filtered = filtered.Where(i =>
+                    i.Key.ToLower().Contains(query) ||
+                    i.Summary.ToLower().Contains(query));
+            if (_jiraActiveStatusFilters.Count > 0)
+                filtered = filtered.Where(i => _jiraActiveStatusFilters.Contains(i.Status));
+
+            _jiraFilteredIssues = filtered.ToList();
+
+            if (_jiraFilteredIssues.Count == 0)
+            {
+                txtJiraIssuesEmpty.Visibility     = Visibility.Visible;
+                JiraIssuesScrollViewer.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                txtJiraIssuesEmpty.Visibility     = Visibility.Collapsed;
+                JiraIssuesScrollViewer.Visibility = Visibility.Visible;
+                BuildJiraIssuesList();
+            }
+
+            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private void TxtJiraSearch_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (txtJiraSearch.Text == "Buscar issue...") txtJiraSearch.Text = "";
+        }
+
+        private void TxtJiraSearch_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtJiraSearch.Text)) txtJiraSearch.Text = "Buscar issue...";
+        }
+
+        private async void TxtJiraSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (txtJiraSearch.Text == "Buscar issue...") return;
+            _jiraSearchCts?.Cancel();
+            _jiraSearchCts = new CancellationTokenSource();
+            var cts = _jiraSearchCts;
+            try { await System.Threading.Tasks.Task.Delay(300, cts.Token); }
+            catch (TaskCanceledException) { return; }
+            ApplyJiraFilters();
+        }
+
+        private async void TxtJiraSearch_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Enter) return;
+            var query = txtJiraSearch.Text.Trim();
+            if (string.IsNullOrWhiteSpace(query) || query == "Buscar issue...") return;
+
+            _jiraSearchCts?.Cancel();
+            JiraIssuesLoading.Visibility      = Visibility.Visible;
+            JiraIssuesScrollViewer.Visibility = Visibility.Collapsed;
+            txtJiraIssuesEmpty.Visibility     = Visibility.Collapsed;
+
+            try
+            {
+                if (System.Text.RegularExpressions.Regex.IsMatch(query, @"^[A-Za-z]+-\d+$"))
+                {
+                    var issue = await _jira.GetIssueAsync(query);
+                    _jiraAllIssues = issue != null ? new List<JiraIssue> { issue } : new();
+                }
+                else
+                {
+                    var jql = $"text ~ \"{query}\" AND assignee = currentUser() ORDER BY updated DESC";
+                    _jiraAllIssues = await _jira.SearchIssuesAsync(jql, 30);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"TxtJiraSearch_KeyDown: error al buscar '{query}'", ex);
+            }
+            finally
+            {
+                JiraIssuesLoading.Visibility = Visibility.Collapsed;
+            }
+            ApplyJiraFilters();
+        }
+
+        private async void CboJiraProjectFilter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (JiraIssueInput.Visibility != Visibility.Visible) return;
+            try { await LoadJiraIssuesFromFilterAsync(); }
+            catch (Exception ex) { LogService.Error("CboJiraProjectFilter_SelectionChanged", ex); }
+        }
+
+        private async void BtnJiraRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            txtJiraSearch.Text = "Buscar issue...";
+            _jiraActiveStatusFilters.Clear();
+            _jiraShowCompleted = false;
+            JiraFilterActiveDot.Visibility = Visibility.Collapsed;
+
+            if (cboJiraProjectFilter.Items.Count > 0)
+            {
+                cboJiraProjectFilter.SelectionChanged -= CboJiraProjectFilter_SelectionChanged;
+                cboJiraProjectFilter.SelectedIndex = 0;
+                cboJiraProjectFilter.SelectionChanged += CboJiraProjectFilter_SelectionChanged;
+            }
+
+            try { await LoadJiraIssuesFromFilterAsync(); }
+            catch (Exception ex) { LogService.Error("BtnJiraRefresh_Click", ex); }
+        }
+
+        private void BtnJiraFilter_Click(object sender, RoutedEventArgs e)
+        {
+            if (JiraFilterPopup.IsOpen) { JiraFilterPopup.IsOpen = false; return; }
+
+            if (_jiraActiveStatusFilters.Count > 0)
+            {
+                _jiraActiveStatusFilters.Clear();
+                JiraFilterActiveDot.Visibility = _jiraShowCompleted ? Visibility.Visible : Visibility.Collapsed;
+                ApplyJiraFilters();
+                return;
+            }
+
+            JiraFilterOptionsPanel.Children.Clear();
+            JiraFilterOptionsPanel.Children.Add(new TextBlock
+            {
+                Text = "FILTRAR POR ESTADO",
+                FontSize = 10, FontWeight = FontWeights.SemiBold,
+                Foreground = TextMutedBrushCached,
+                Margin = new Thickness(8, 6, 8, 6)
+            });
+
+            var statuses = _jiraAllIssues.Select(i => i.Status).Distinct().OrderBy(s => s).ToList();
+            foreach (var status in statuses)
+            {
+                var isChecked = _jiraActiveStatusFilters.Count == 0 || _jiraActiveStatusFilters.Contains(status);
+                var cb = new CheckBox
+                {
+                    Content = status, Tag = status,
+                    IsChecked = isChecked,
+                    Foreground = TextPrimaryBrushCached, FontSize = 12,
+                    Margin = new Thickness(8, 3, 12, 3)
+                };
+                cb.Checked   += JiraFilterOption_Changed;
+                cb.Unchecked += JiraFilterOption_Changed;
+                JiraFilterOptionsPanel.Children.Add(cb);
+            }
+
+            JiraFilterOptionsPanel.Children.Add(new Border
+            {
+                Height = 1,
+                Background = new SolidColorBrush(Color.FromArgb(40, 99, 102, 241)),
+                Margin = new Thickness(8, 6, 8, 2)
+            });
+
+            var cbDone = new CheckBox
+            {
+                Content = "Mostrar completados",
+                IsChecked = _jiraShowCompleted,
+                Foreground = TextPrimaryBrushCached, FontSize = 12,
+                Margin = new Thickness(8, 3, 12, 6)
+            };
+            cbDone.Checked   += JiraCompletedFilter_Changed;
+            cbDone.Unchecked += JiraCompletedFilter_Changed;
+            JiraFilterOptionsPanel.Children.Add(cbDone);
+
+            JiraFilterPopup.PlacementTarget = btnJiraFilter;
+            JiraFilterPopup.Opened -= JiraFilterPopup_Opened;
+            JiraFilterPopup.Closed  -= JiraFilterPopup_Closed;
+            JiraFilterPopup.Opened += JiraFilterPopup_Opened;
+            JiraFilterPopup.Closed  += JiraFilterPopup_Closed;
+            _suppressAutoHide = true;
+            JiraFilterPopup.IsOpen = true;
+        }
+
+        private void JiraFilterPopup_Opened(object? sender, EventArgs e) => _suppressAutoHide = true;
+
+        private void JiraFilterPopup_Closed(object? sender, EventArgs e)
+        {
+            _ = System.Threading.Tasks.Task.Delay(200).ContinueWith(
+                _ => Dispatcher.Invoke(() => _suppressAutoHide = false));
+        }
+
+        private void JiraFilterOption_Changed(object sender, RoutedEventArgs e)
+        {
+            var allStatuses = _jiraAllIssues.Select(i => i.Status).Distinct().ToHashSet();
+
+            _jiraActiveStatusFilters = JiraFilterOptionsPanel.Children.OfType<CheckBox>()
+                .Where(cb => cb.IsChecked == true && cb.Tag is string)
+                .Select(cb => (string)cb.Tag!)
+                .ToHashSet();
+
+            if (_jiraActiveStatusFilters.SetEquals(allStatuses))
+                _jiraActiveStatusFilters.Clear();
+
+            JiraFilterActiveDot.Visibility = (_jiraActiveStatusFilters.Count > 0 || _jiraShowCompleted)
+                ? Visibility.Visible : Visibility.Collapsed;
+
+            ApplyJiraFilters();
+        }
+
+        private async void JiraCompletedFilter_Changed(object sender, RoutedEventArgs e)
+        {
+            if (sender is not CheckBox cb) return;
+            _jiraShowCompleted = cb.IsChecked == true;
+            JiraFilterPopup.IsOpen = false;
+            _jiraActiveStatusFilters.Clear();
+            JiraFilterActiveDot.Visibility = _jiraShowCompleted ? Visibility.Visible : Visibility.Collapsed;
+            try { await LoadJiraIssuesFromFilterAsync(); }
+            catch (Exception ex) { LogService.Error("JiraCompletedFilter_Changed", ex); }
+        }
 
         // ══════════════════════════════════════════════════
         // SYSTEM TRAY
