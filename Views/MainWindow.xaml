@@ -325,6 +325,61 @@
                             </CheckBox>
 
                             <StackPanel x:Name="JiraIssueInput" Visibility="Collapsed" Margin="0,8,0,0">
+
+                                <!-- FILTER BAR -->
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="6"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <ComboBox x:Name="cboJiraProjectFilter" Grid.Column="0"
+                                              Style="{StaticResource ModernComboBox}"
+                                              DisplayMemberPath="Key"
+                                              SelectionChanged="CboJiraProjectFilter_SelectionChanged"
+                                              ToolTip="Filtrar por proyecto"/>
+
+                                    <TextBox x:Name="txtJiraSearch" Grid.Column="2"
+                                             Style="{StaticResource ModernTextBox}"
+                                             Text="Buscar issue..."
+                                             GotFocus="TxtJiraSearch_GotFocus"
+                                             LostFocus="TxtJiraSearch_LostFocus"
+                                             KeyDown="TxtJiraSearch_KeyDown"
+                                             TextChanged="TxtJiraSearch_TextChanged"
+                                             ToolTip="Escribe una clave de issue o texto"/>
+
+                                    <Button x:Name="btnJiraFilter" Grid.Column="4"
+                                            Style="{StaticResource NavButton}"
+                                            Padding="0"
+                                            Click="BtnJiraFilter_Click"
+                                            ToolTip="Filtrar por estado">
+                                        <Grid>
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Rectangle Height="2" Width="12" RadiusX="1" RadiusY="1"
+                                                           Fill="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2.5"/>
+                                                <Rectangle Height="2" Width="8" RadiusX="1" RadiusY="1"
+                                                           Fill="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2.5"/>
+                                                <Rectangle Height="2" Width="4" RadiusX="1" RadiusY="1"
+                                                           Fill="{StaticResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                            <Ellipse x:Name="JiraFilterActiveDot" Width="7" Height="7"
+                                                     Fill="{StaticResource AccentBrush}"
+                                                     HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                     Margin="0,1,1,0" Visibility="Collapsed"/>
+                                        </Grid>
+                                    </Button>
+
+                                    <Button Grid.Column="6" Style="{StaticResource NavButton}"
+                                            Content="↺" FontSize="14"
+                                            Click="BtnJiraRefresh_Click"
+                                            ToolTip="Recargar issues"/>
+                                </Grid>
+
                                 <TextBlock Text="MIS ISSUES" Style="{StaticResource LabelStyle}" Margin="0,0,0,4"/>
 
                                 <StackPanel x:Name="JiraIssuesLoading" HorizontalAlignment="Center"
@@ -364,6 +419,20 @@
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
+
+                            <!-- JIRA STATUS FILTER POPUP -->
+                            <Popup x:Name="JiraFilterPopup"
+                                   Placement="Bottom" VerticalOffset="2"
+                                   StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+                                <Border Background="{StaticResource BgElevatedBrush}"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="4" MinWidth="170">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.6" Color="Black"/>
+                                    </Border.Effect>
+                                    <StackPanel x:Name="JiraFilterOptionsPanel"/>
+                                </Border>
+                            </Popup>
                         </StackPanel>
                     </Border>
 
