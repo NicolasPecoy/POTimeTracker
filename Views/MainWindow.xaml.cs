@@ -53,6 +53,7 @@ namespace POTimeTracker.Views
         private bool _reminderOnSaturday = false;
         private bool _reminderOnSunday = false;
         private double _reloginIntervalHours = 3.0;
+        private bool _startDateAsToday = true;
 
         private static readonly string[] DayNames = { "DOMINGO","LUNES","MARTES","MIERCOLES","JUEVES","VIERNES","SABADO" };
         private static readonly string[] MonthNames = { "Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre" };
@@ -140,6 +141,7 @@ namespace POTimeTracker.Views
             _reminderOnSunday = config.ReminderOnSunday;
             _reloginIntervalHours = config.ReloginIntervalHours > 0 ? config.ReloginIntervalHours : 3.0;
             if (config.WeeklyTarget > 0) _weeklyTarget = config.WeeklyTarget;
+            _startDateAsToday = config.StartDateAsToday;
         }
 
         private void PositionAboveTray()
@@ -1539,11 +1541,16 @@ namespace POTimeTracker.Views
         private void ToggleVisibility()
         {
             if (IsVisible) { Hide(); }
-            else { Show(); PositionAboveTray(); Activate(); PlayFadeIn(); }
+            else { ResetDateIfNeeded(); Show(); PositionAboveTray(); Activate(); PlayFadeIn(); }
         }
 
         private void MenuItem_Open_Click(object sender, RoutedEventArgs e)
-        { Show(); PositionAboveTray(); Activate(); }
+        { ResetDateIfNeeded(); Show(); PositionAboveTray(); Activate(); }
+
+        private void ResetDateIfNeeded()
+        {
+            if (_startDateAsToday) { _currentDate = DateTime.Today; RefreshAll(); }
+        }
 
         private async void MenuItem_Reload_Click(object sender, RoutedEventArgs e)
         {

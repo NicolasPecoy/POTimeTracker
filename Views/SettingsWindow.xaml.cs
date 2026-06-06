@@ -68,6 +68,7 @@ namespace POTimeTracker.Views
 
             chkSaturday.IsChecked = config.ReminderOnSaturday;
             chkSunday.IsChecked = config.ReminderOnSunday;
+            chkStartDateAsToday.IsChecked = config.StartDateAsToday;
 
             double interval = Math.Max(0.5, Math.Min(24, config.ReloginIntervalHours));
             txtReloginInterval.Text = interval.ToString("0.0", CultureInfo.InvariantCulture);
@@ -117,6 +118,7 @@ namespace POTimeTracker.Views
             existing.ReminderMinute = minuteItem.Value;
             existing.ReminderOnSaturday = chkSaturday.IsChecked == true;
             existing.ReminderOnSunday = chkSunday.IsChecked == true;
+            existing.StartDateAsToday = chkStartDateAsToday.IsChecked == true;
             existing.ReloginIntervalHours = interval;
             existing.WeeklyTarget = weekly;
 

@@ -137,6 +137,21 @@
                     </StackPanel>
                 </Border>
 
+                <!-- SECTION: COMPORTAMIENTO -->
+                <Border Background="{StaticResource BgBaseBrush}" CornerRadius="10"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        Padding="14,12" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="COMPORTAMIENTO" Style="{StaticResource LabelStyle}" Margin="0,0,0,12"/>
+                        <CheckBox x:Name="chkStartDateAsToday" Content="Mostrar siempre la fecha de hoy al abrir"
+                                  Foreground="{StaticResource TextSecondaryBrush}"
+                                  FontSize="12"/>
+                        <TextBlock Text="Si esta desactivado, recuerda la ultima fecha seleccionada"
+                                   FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- SECTION: OBJETIVO SEMANAL -->
                 <Border Background="{StaticResource BgBaseBrush}" CornerRadius="10"
                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
