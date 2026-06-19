@@ -30,6 +30,9 @@ namespace POTimeTracker.Views
         private HashSet<string>   _activeStatusFilters = new();
         private bool              _showCompleted = false;
         private CancellationTokenSource? _searchCts;
+        // Progressive loading: incremented every time we start a fresh load; background
+        // tasks compare against this and bail out if it changed (stale load).
+        private int _loadGen = 0;
 
         /// <summary>Fired when the window hides itself (minimize button or deactivation).</summary>
         public event EventHandler? WindowHidden;
@@ -158,6 +161,7 @@ namespace POTimeTracker.Views
 
         private async System.Threading.Tasks.Task LoadIssuesAsync()
         {
+            var gen = ++_loadGen;
             try
             {
                 ShowIssuesLoading(true);
@@ -167,18 +171,48 @@ namespace POTimeTracker.Views
 
                 var selectedProject = cboProject.SelectedItem as JiraProject;
                 var projectKey      = selectedProject?.Id == "" ? "" : selectedProject?.Key ?? "";
+                var jql             = JiraApiService.BuildMyIssuesJql(projectKey, _showCompleted);
 
-                _allIssues = await _jira.GetMyIssuesAsync(projectKey, includeDone: _showCompleted);
+                // First page: fast, show immediately
+                var (firstPage, nextToken) = await _jira.SearchIssuesPageAsync(jql, 100);
+
+                if (gen != _loadGen) return; // superseded by newer load
+
+                _allIssues = firstPage;
                 _issues    = new List<JiraIssue>(_allIssues);
+                ShowIssuesLoading(false);
                 BuildIssuesList();
+
+                // Background: keep loading remaining pages silently (up to 500 total)
+                if (nextToken != null)
+                    _ = LoadMoreIssuesAsync(gen, jql, nextToken);
             }
             catch (Exception ex)
             {
                 LogService.Error("JiraWindow.LoadIssuesAsync: error al cargar issues", ex);
-            }
-            finally
-            {
                 ShowIssuesLoading(false);
+            }
+        }
+
+        private async System.Threading.Tasks.Task LoadMoreIssuesAsync(int gen, string jql, string startToken)
+        {
+            var token = startToken;
+            while (token != null && gen == _loadGen && _allIssues.Count < 500)
+            {
+                try
+                {
+                    var (page, nextToken) = await _jira.SearchIssuesPageAsync(jql, 100, token);
+                    if (gen != _loadGen || page.Count == 0) break;
+
+                    _allIssues.AddRange(page);
+                    ApplyFilters(); // re-apply current search/status filter and rebuild list
+                    token = nextToken;
+                }
+                catch (Exception ex)
+                {
+                    LogService.Warn("JiraWindow.LoadMoreIssuesAsync: error en carga progresiva", ex);
+                    break;
+                }
             }
         }
 
@@ -338,7 +372,8 @@ namespace POTimeTracker.Views
                 BorderThickness = new Thickness(0, 0, 0, 1),
                 Background      = Transparent,
                 Cursor          = Cursors.Hand,
-                Child           = grid
+                Child           = grid,
+                Tag             = issue.Key
             };
 
             var captured = issue;
@@ -824,6 +859,178 @@ namespace POTimeTracker.Views
             Hide();
             WindowHidden?.Invoke(this, EventArgs.Empty);
         }
+
+        // ══════════════════════════════════════════════════
+        // STATUS CHANGE
+        // ══════════════════════════════════════════════════
+
+        private async void BtnChangeStatus_Click(object sender, RoutedEventArgs e)
+        {
+            if (_selectedIssue == null) return;
+
+            TransitionsPopup.IsOpen = false;
+            TransitionsPanel.Children.Clear();
+
+            TransitionsPanel.Children.Add(new TextBlock
+            {
+                Text       = "MOVER A",
+                FontSize   = 10,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = TextMuted,
+                Margin     = new Thickness(12, 8, 12, 6)
+            });
+
+            var loading = new TextBlock
+            {
+                Text       = "Cargando...",
+                FontSize   = 12,
+                Foreground = TextSecondary,
+                Margin     = new Thickness(12, 4, 12, 10)
+            };
+            TransitionsPanel.Children.Add(loading);
+
+            TransitionsPopup.PlacementTarget = btnChangeStatus;
+            TransitionsPopup.Placement       = PlacementMode.Bottom;
+            TransitionsPopup.IsOpen          = true;
+
+            var transitions = await _jira.GetTransitionsAsync(_selectedIssue.Key);
+            TransitionsPanel.Children.Remove(loading);
+
+            if (transitions.Count == 0)
+            {
+                TransitionsPanel.Children.Add(new TextBlock
+                {
+                    Text       = "Sin transiciones disponibles",
+                    FontSize   = 12,
+                    Foreground = TextSecondary,
+                    Margin     = new Thickness(12, 4, 12, 10)
+                });
+                return;
+            }
+
+            foreach (var tr in transitions)
+                TransitionsPanel.Children.Add(BuildTransitionButton(tr));
+            TransitionsPanel.Children.Add(new Border { Height = 4 });
+        }
+
+        // Hover semi-transparente para no tapar el texto
+        private static readonly SolidColorBrush TransitionHoverBrush =
+            new(Color.FromArgb(35, 99, 102, 241));
+
+        private Border BuildTransitionButton(JiraTransition tr)
+        {
+            var categoryBrush = GetTransitionCategoryBrush(tr);
+
+            var dot = new System.Windows.Shapes.Ellipse
+            {
+                Width             = 9,
+                Height            = 9,
+                Fill              = categoryBrush,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin            = new Thickness(0, 0, 9, 0),
+                Opacity           = tr.IsAvailable ? 1.0 : 0.4
+            };
+
+            var label = new TextBlock
+            {
+                Text              = tr.Name,
+                FontSize          = 12,
+                Foreground        = tr.IsAvailable ? TextPrimary : TextMuted,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var row = new StackPanel
+            {
+                Orientation       = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            row.Children.Add(dot);
+            row.Children.Add(label);
+
+            if (!tr.IsAvailable)
+                row.Children.Add(new TextBlock
+                {
+                    Text              = "  ·  no disponible",
+                    FontSize          = 10,
+                    Foreground        = TextMuted,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Opacity           = 0.5
+                });
+
+            var capturedId = tr.Id;
+            // Border en lugar de Button para evitar que WPF sobreescriba el hover
+            var container = new Border
+            {
+                Background   = Transparent,
+                CornerRadius = new CornerRadius(6),
+                Padding      = new Thickness(10, 8, 10, 8),
+                Margin       = new Thickness(4, 1, 4, 1),
+                Cursor       = tr.IsAvailable ? Cursors.Hand : Cursors.Arrow,
+                Child        = row
+            };
+
+            if (tr.IsAvailable)
+            {
+                container.MouseEnter        += (s, _) => ((Border)s).Background = TransitionHoverBrush;
+                container.MouseLeave        += (s, _) => ((Border)s).Background = Transparent;
+                container.MouseLeftButtonUp += (s, ev) => { ev.Handled = true; _ = ApplyTransitionAsync(capturedId); };
+            }
+
+            return container;
+        }
+
+        private async System.Threading.Tasks.Task ApplyTransitionAsync(string transitionId)
+        {
+            if (_selectedIssue == null) return;
+            TransitionsPopup.IsOpen = false;
+
+            var issueKey  = _selectedIssue.Key;
+            var (ok, msg) = await _jira.TransitionIssueAsync(issueKey, transitionId);
+            ShowStatusMessage(ok ? $"Estado cambiado: {issueKey}" : msg, !ok);
+            if (!ok) return;
+
+            var updated = await _jira.GetIssueAsync(issueKey);
+            if (updated == null) return;
+
+            var idx = _allIssues.FindIndex(i => i.Key == issueKey);
+            if (idx >= 0) _allIssues[idx] = updated;
+            idx = _issues.FindIndex(i => i.Key == issueKey);
+            if (idx >= 0) _issues[idx] = updated;
+
+            _selectedIssue               = updated;
+            txtSelectedStatus.Text       = updated.Status;
+            StatusBadge.Background       = GetStatusSoftBrush(updated.StatusCategory);
+            txtSelectedStatus.Foreground = GetStatusBrush(updated.StatusCategory);
+
+            BuildIssuesList();
+            foreach (Border b in IssuesPanel.Children.OfType<Border>())
+                if (b.Tag?.ToString() == issueKey) b.Background = ActiveBg;
+            IssuDetailPanel.Visibility = Visibility.Visible;
+        }
+
+        // Detección por nombre para cancelaciones (rojo) + categoría para el resto
+        private static SolidColorBrush GetTransitionCategoryBrush(JiraTransition tr)
+        {
+            if (IsCancelLike(tr.Name) || IsCancelLike(tr.ToStatusName))
+                return RedBrush;
+
+            return tr.ToStatusCategory switch
+            {
+                "done"          => GreenBrush,
+                "indeterminate" => new SolidColorBrush(Color.FromRgb(38,  132, 255)), // azul  = en progreso
+                "new"           => new SolidColorBrush(Color.FromRgb(101, 109, 134)), // gris  = por hacer
+                _               => new SolidColorBrush(Color.FromRgb(101, 109, 134))
+            };
+        }
+
+        private static bool IsCancelLike(string name) =>
+            !string.IsNullOrEmpty(name) && (
+                name.Contains("cancel",  StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("rechaz",  StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("reject",  StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("invalid", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("descart", StringComparison.OrdinalIgnoreCase));
+
 
         // ══════════════════════════════════════════════════
         // UI HELPERS

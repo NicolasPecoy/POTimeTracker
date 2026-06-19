@@ -433,6 +433,20 @@
                                     <StackPanel x:Name="JiraFilterOptionsPanel"/>
                                 </Border>
                             </Popup>
+
+                            <!-- JIRA TRANSITIONS POPUP -->
+                            <Popup x:Name="JiraTransitionsPopup"
+                                   Placement="Bottom" VerticalOffset="2"
+                                   StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+                                <Border Background="{StaticResource BgElevatedBrush}"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="1" CornerRadius="8" Padding="4" MinWidth="160">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.6" Color="Black"/>
+                                    </Border.Effect>
+                                    <StackPanel x:Name="JiraTransitionsPanel"/>
+                                </Border>
+                            </Popup>
                         </StackPanel>
                     </Border>
 

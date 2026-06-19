@@ -37,4 +37,14 @@ namespace POTimeTracker.Models
         public string StatusCategory { get; set; } = "";
         public double Hours          { get; set; }
     }
+
+    public class JiraTransition
+    {
+        public string Id               { get; set; } = "";
+        public string Name             { get; set; } = "";
+        public string ToStatusName     { get; set; } = "";
+        public string ToStatusCategory { get; set; } = "";
+        public bool   IsAvailable      { get; set; } = true;
+        public bool   HasScreen        { get; set; } = false;
+    }
 }

@@ -287,6 +287,10 @@
                         <TextBlock x:Name="txtSelectedSummary" FontSize="12"
                                    Foreground="{StaticResource TextPrimaryBrush}"
                                    TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        <Button x:Name="btnChangeStatus" Style="{StaticResource GhostButton}"
+                                Content="Cambiar estado ▾" FontSize="11" Padding="8,4"
+                                HorizontalAlignment="Left" Margin="0,8,0,0"
+                                Click="BtnChangeStatus_Click" ToolTip="Ver transiciones disponibles"/>
                     </StackPanel>
                 </Border>
 
@@ -424,6 +428,20 @@
 
                     </StackPanel>
                 </Border>
+
+                <!-- TRANSITIONS POPUP -->
+                <Popup x:Name="TransitionsPopup"
+                       Placement="Bottom" VerticalOffset="2"
+                       StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+                    <Border Background="{StaticResource BgElevatedBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="4" MinWidth="170">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.6" Color="Black"/>
+                        </Border.Effect>
+                        <StackPanel x:Name="TransitionsPanel"/>
+                    </Border>
+                </Popup>
 
                 <!-- FILTER POPUP -->
                 <Popup x:Name="FilterPopup"
