@@ -177,38 +177,79 @@ namespace POTimeTracker.Services
         // ISSUES
         // ═══════════════════════════════════════════════════════════
 
-        public async Task<List<JiraIssue>> SearchIssuesAsync(string jql, int maxResults = 50)
+        /// <summary>
+        /// Fetch a single page of issues. Returns the page and a nextPageToken (null = no more pages).
+        /// Use this for progressive / background loading.
+        /// </summary>
+        public async Task<(List<JiraIssue> Issues, string? NextPageToken)> SearchIssuesPageAsync(
+            string jql, int pageSize = 100, string? pageToken = null)
         {
             try
             {
                 var url = $"{_baseUrl}/rest/api/3/search/jql"
                         + $"?jql={Uri.EscapeDataString(jql)}"
-                        + $"&maxResults={maxResults}"
+                        + $"&maxResults={Math.Min(pageSize, 100)}"
                         + "&fields=summary,status,issuetype,assignee";
+                if (pageToken != null)
+                    url += $"&nextPageToken={Uri.EscapeDataString(pageToken)}";
 
                 var response = await _client.GetAsync(url);
-                var body = await response.Content.ReadAsStringAsync();
-                if (!response.IsSuccessStatusCode) return new();
+                var body     = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode) return (new(), null);
 
-                var json = JsonSerializer.Deserialize<JsonElement>(body);
-                return ParseIssueArray(json, "issues");
+                var json   = JsonSerializer.Deserialize<JsonElement>(body);
+                var issues = ParseIssueArray(json, "issues");
+
+                // New endpoint uses nextPageToken; absence or null means last page
+                string? next = null;
+                if (json.TryGetProperty("nextPageToken", out var npt)
+                    && npt.ValueKind != JsonValueKind.Null)
+                {
+                    var candidate = npt.GetString();
+                    // Guard against infinite-loop: reject token equal to current one
+                    if (!string.IsNullOrEmpty(candidate) && candidate != pageToken)
+                        next = candidate;
+                }
+
+                // If the page is smaller than requested we are at the end
+                if (issues.Count < Math.Min(pageSize, 100))
+                    next = null;
+
+                return (issues, next);
             }
             catch (Exception ex)
             {
-                LogService.Error("JiraApiService.SearchIssuesAsync", ex);
-                return new();
+                LogService.Error("JiraApiService.SearchIssuesPageAsync", ex);
+                return (new(), null);
             }
         }
 
-        public Task<List<JiraIssue>> GetMyIssuesAsync(string projectKey = "", int maxResults = 50, bool includeDone = false)
+        /// <summary>Single-request search (fast). Explicit searches and worklog queries use this.</summary>
+        public async Task<List<JiraIssue>> SearchIssuesAsync(string jql, int maxResults = 50)
+        {
+            var (issues, _) = await SearchIssuesPageAsync(jql, Math.Min(maxResults, 100));
+            return issues;
+        }
+
+        /// <summary>Builds the JQL string for "my open issues" without executing it.</summary>
+        public static string BuildMyIssuesJql(string projectKey = "", bool includeDone = false)
         {
             var jql = includeDone
                 ? "assignee = currentUser() ORDER BY updated DESC"
                 : "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC";
             if (!string.IsNullOrWhiteSpace(projectKey))
                 jql = $"project = \"{projectKey}\" AND " + jql;
-            return SearchIssuesAsync(jql, maxResults);
+            return jql;
         }
+
+        /// <summary>Returns first 100 issues immediately. Callers can continue loading via SearchIssuesPageAsync.</summary>
+        public Task<(List<JiraIssue> Issues, string? NextPageToken)> GetMyIssuesPageAsync(
+            string projectKey = "", bool includeDone = false)
+            => SearchIssuesPageAsync(BuildMyIssuesJql(projectKey, includeDone), 100);
+
+        // Keep for backward compat (worklog queries pass explicit limit)
+        public Task<List<JiraIssue>> GetMyIssuesAsync(string projectKey = "", bool includeDone = false)
+            => SearchIssuesAsync(BuildMyIssuesJql(projectKey, includeDone), 100);
 
         public async Task<JiraIssue?> GetIssueAsync(string issueKey)
         {
@@ -276,6 +317,94 @@ namespace POTimeTracker.Services
             catch (Exception ex)
             {
                 LogService.Error($"JiraApiService.LogWorkAsync({issueKey})", ex);
+                return (false, $"Error: {ex.Message}");
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // TRANSITIONS (STATUS CHANGE)
+        // ═══════════════════════════════════════════════════════════
+
+        public async Task<List<JiraTransition>> GetTransitionsAsync(string issueKey)
+        {
+            try
+            {
+                // includeUnavailableTransitions=true ensures "Done" and other states
+                // are returned even when workflow conditions aren't fully met.
+                var url      = $"{_baseUrl}/rest/api/3/issue/{Uri.EscapeDataString(issueKey)}/transitions"
+                             + "?includeUnavailableTransitions=true&sortByOpsBarAndStatus=true";
+                var response = await _client.GetAsync(url);
+                var body     = await response.Content.ReadAsStringAsync();
+                if (!response.IsSuccessStatusCode) return new();
+
+                var json = JsonSerializer.Deserialize<JsonElement>(body);
+                var list = new List<JiraTransition>();
+                if (!json.TryGetProperty("transitions", out var arr)) return list;
+
+                foreach (var t in arr.EnumerateArray())
+                {
+                    var id   = GetString(t, "id");
+                    var name = GetString(t, "name");
+                    if (string.IsNullOrEmpty(id)) continue;
+
+                    var toStatusName = "";
+                    var toCategory   = "";
+                    if (t.TryGetProperty("to", out var to))
+                    {
+                        toStatusName = GetString(to, "name");
+                        if (to.TryGetProperty("statusCategory", out var sc))
+                            toCategory = GetString(sc, "key");
+                    }
+
+                    var isAvailable = !t.TryGetProperty("isAvailable", out var avProp) || avProp.GetBoolean();
+                    var hasScreen   =  t.TryGetProperty("hasScreen",   out var hsProp) && hsProp.GetBoolean();
+
+                    list.Add(new JiraTransition
+                    {
+                        Id               = id,
+                        Name             = name,
+                        ToStatusName     = toStatusName,
+                        ToStatusCategory = toCategory,
+                        IsAvailable      = isAvailable,
+                        HasScreen        = hasScreen
+                    });
+                }
+                return list;
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"JiraApiService.GetTransitionsAsync({issueKey})", ex);
+                return new();
+            }
+        }
+
+        public async Task<(bool Success, string Message)> TransitionIssueAsync(string issueKey, string transitionId)
+        {
+            try
+            {
+                var bodyObj = new { transition = new { id = transitionId } };
+                var content = new StringContent(
+                    JsonSerializer.Serialize(bodyObj),
+                    Encoding.UTF8,
+                    "application/json");
+
+                var response = await _client.PostAsync(
+                    $"{_baseUrl}/rest/api/3/issue/{Uri.EscapeDataString(issueKey)}/transitions",
+                    content);
+
+                var respBody = await response.Content.ReadAsStringAsync();
+                return response.IsSuccessStatusCode
+                    ? (true, "Estado cambiado")
+                    : (false, $"Jira {(int)response.StatusCode}: {ExtractJiraError(respBody)}");
+            }
+            catch (TaskCanceledException ex)
+            {
+                LogService.Warn($"JiraApiService.TransitionIssueAsync({issueKey}): timeout", ex);
+                return (false, "Timeout al conectar con Jira");
+            }
+            catch (Exception ex)
+            {
+                LogService.Error($"JiraApiService.TransitionIssueAsync({issueKey})", ex);
                 return (false, $"Error: {ex.Message}");
             }
         }

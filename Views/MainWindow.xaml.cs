@@ -34,6 +34,7 @@ namespace POTimeTracker.Views
         private HashSet<string>            _jiraActiveStatusFilters = new();
         private bool                       _jiraShowCompleted       = false;
         private CancellationTokenSource?   _jiraSearchCts;
+        private int                        _jiraLoadGen             = 0;
 
         private DateTime _currentDate = DateTime.Today;
         private DateTime _projectsLoadedForDate = DateTime.MinValue;
@@ -929,14 +930,15 @@ namespace POTimeTracker.Views
 
         private async System.Threading.Tasks.Task LoadJiraIssuesAsync()
         {
+            var gen = ++_jiraLoadGen;
             try
             {
                 if (!_jira.IsConnected)
                 {
-                    var (cfg, token) = JiraConfigService.LoadConfig();
-                    if (cfg != null && !string.IsNullOrEmpty(token))
+                    var (cfg, tok) = JiraConfigService.LoadConfig();
+                    if (cfg != null && !string.IsNullOrEmpty(tok))
                     {
-                        _jira.Configure(cfg.BaseUrl, cfg.Email, token);
+                        _jira.Configure(cfg.BaseUrl, cfg.Email, tok);
                         await _jira.TestConnectionAsync();
                     }
                 }
@@ -968,20 +970,27 @@ namespace POTimeTracker.Views
                 cboJiraProjectFilter.SelectedIndex = 0;
                 cboJiraProjectFilter.SelectionChanged += CboJiraProjectFilter_SelectionChanged;
 
-                _jiraAllIssues = await _jira.GetMyIssuesAsync("");
-                _jiraFilteredIssues = new List<JiraIssue>(_jiraAllIssues);
+                var jql = JiraApiService.BuildMyIssuesJql("");
 
+                // Fast: first 100 issues, show immediately
+                var (firstPage, nextToken) = await _jira.SearchIssuesPageAsync(jql, 100);
+                if (gen != _jiraLoadGen) return;
+
+                _jiraAllIssues      = firstPage;
+                _jiraFilteredIssues = new List<JiraIssue>(_jiraAllIssues);
                 JiraIssuesLoading.Visibility = Visibility.Collapsed;
 
                 if (_jiraFilteredIssues.Count == 0)
-                {
                     txtJiraIssuesEmpty.Visibility = Visibility.Visible;
-                }
                 else
                 {
                     JiraIssuesScrollViewer.Visibility = Visibility.Visible;
                     BuildJiraIssuesList();
                 }
+
+                // Background: load remaining pages silently
+                if (nextToken != null)
+                    _ = LoadMoreJiraIssuesAsync(gen, jql, nextToken);
             }
             catch (Exception ex)
             {
@@ -995,14 +1004,15 @@ namespace POTimeTracker.Views
 
         private async System.Threading.Tasks.Task LoadJiraIssuesFromFilterAsync()
         {
+            var gen = ++_jiraLoadGen;
             try
             {
                 if (!_jira.IsConnected)
                 {
-                    var (cfg, token) = JiraConfigService.LoadConfig();
-                    if (cfg != null && !string.IsNullOrEmpty(token))
+                    var (cfg, tok) = JiraConfigService.LoadConfig();
+                    if (cfg != null && !string.IsNullOrEmpty(tok))
                     {
-                        _jira.Configure(cfg.BaseUrl, cfg.Email, token);
+                        _jira.Configure(cfg.BaseUrl, cfg.Email, tok);
                         await _jira.TestConnectionAsync();
                     }
                 }
@@ -1015,10 +1025,15 @@ namespace POTimeTracker.Views
 
                 var selectedProj = cboJiraProjectFilter.SelectedItem as JiraProject;
                 var projectKey   = selectedProj?.Id == "" ? "" : selectedProj?.Key ?? "";
-                _jiraAllIssues   = await _jira.GetMyIssuesAsync(projectKey, includeDone: _jiraShowCompleted);
+                var jql          = JiraApiService.BuildMyIssuesJql(projectKey, _jiraShowCompleted);
 
-                JiraIssuesLoading.Visibility = Visibility.Collapsed;
+                // Fast: first page
+                var (firstPage, nextToken) = await _jira.SearchIssuesPageAsync(jql, 100);
+                if (gen != _jiraLoadGen) return;
+
+                _jiraAllIssues      = firstPage;
                 _jiraFilteredIssues = new List<JiraIssue>(_jiraAllIssues);
+                JiraIssuesLoading.Visibility = Visibility.Collapsed;
 
                 if (_jiraFilteredIssues.Count == 0)
                     txtJiraIssuesEmpty.Visibility = Visibility.Visible;
@@ -1027,12 +1042,39 @@ namespace POTimeTracker.Views
                     JiraIssuesScrollViewer.Visibility = Visibility.Visible;
                     BuildJiraIssuesList();
                 }
+
+                // Background: remaining pages
+                if (nextToken != null)
+                    _ = LoadMoreJiraIssuesAsync(gen, jql, nextToken);
             }
             catch (Exception ex)
             {
                 LogService.Error("LoadJiraIssuesFromFilterAsync: error al cargar issues", ex);
                 JiraIssuesLoading.Visibility  = Visibility.Collapsed;
                 txtJiraIssuesEmpty.Visibility = Visibility.Visible;
+            }
+            _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private async System.Threading.Tasks.Task LoadMoreJiraIssuesAsync(int gen, string jql, string startToken)
+        {
+            var token = startToken;
+            while (token != null && gen == _jiraLoadGen && _jiraAllIssues.Count < 500)
+            {
+                try
+                {
+                    var (page, nextToken) = await _jira.SearchIssuesPageAsync(jql, 100, token);
+                    if (gen != _jiraLoadGen || page.Count == 0) break;
+
+                    _jiraAllIssues.AddRange(page);
+                    ApplyJiraFilters();
+                    token = nextToken;
+                }
+                catch (Exception ex)
+                {
+                    LogService.Warn("LoadMoreJiraIssuesAsync: error en carga progresiva", ex);
+                    break;
+                }
             }
             _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
         }
@@ -1051,6 +1093,7 @@ namespace POTimeTracker.Views
             outerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3) });
             outerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(8) });
             outerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            outerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             outerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var bar = new Border
@@ -1109,7 +1152,26 @@ namespace POTimeTracker.Views
             Grid.SetColumn(hoursBox, 3);
             outerGrid.Children.Add(hoursBox);
 
+            var statusBtn = new Button
+            {
+                Content           = "↗",
+                FontSize          = 11,
+                Width             = 24,
+                Height            = 24,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin            = new Thickness(4, 0, 0, 0),
+                ToolTip           = "Cambiar estado en Jira",
+                Background        = TransparentBrush,
+                BorderThickness   = new Thickness(0),
+                Cursor            = Cursors.Hand,
+                Foreground        = TextSecondaryBrushCached
+            };
+            if (TryFindResource("NavButton") is Style navBtnStyle) statusBtn.Style = navBtnStyle;
+            Grid.SetColumn(statusBtn, 4);
+            outerGrid.Children.Add(statusBtn);
+
             var captured = issue;
+            statusBtn.Click += (s, ev) => _ = ShowJiraTransitionsAsync(captured, (Button)s!);
             chk.Checked += (s, ev) =>
             {
                 hoursBox.Visibility = Visibility.Visible;
@@ -1287,6 +1349,200 @@ namespace POTimeTracker.Views
             try { await LoadJiraIssuesFromFilterAsync(); }
             catch (Exception ex) { LogService.Error("BtnJiraRefresh_Click", ex); }
         }
+
+        private JiraIssue? _jiraTransitionTargetIssue;
+
+        private async System.Threading.Tasks.Task ShowJiraTransitionsAsync(JiraIssue issue, FrameworkElement anchor)
+        {
+            _jiraTransitionTargetIssue = issue;
+            JiraTransitionsPopup.IsOpen = false;
+            JiraTransitionsPanel.Children.Clear();
+
+            JiraTransitionsPanel.Children.Add(new TextBlock
+            {
+                Text       = "MOVER A",
+                FontSize   = 10,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = TextMutedBrushCached,
+                Margin     = new Thickness(12, 8, 12, 6)
+            });
+
+            var loading = new TextBlock
+            {
+                Text       = "Cargando...",
+                FontSize   = 12,
+                Foreground = TextSecondaryBrushCached,
+                Margin     = new Thickness(12, 4, 12, 10)
+            };
+            JiraTransitionsPanel.Children.Add(loading);
+
+            JiraTransitionsPopup.PlacementTarget = anchor;
+            _suppressAutoHide = true;
+            JiraTransitionsPopup.Closed -= JiraTransitionsPopup_Closed;
+            JiraTransitionsPopup.Closed += JiraTransitionsPopup_Closed;
+            JiraTransitionsPopup.IsOpen = true;
+
+            if (!_jira.IsConnected)
+            {
+                var (cfg, tok) = JiraConfigService.LoadConfig();
+                if (cfg != null && !string.IsNullOrEmpty(tok))
+                {
+                    _jira.Configure(cfg.BaseUrl, cfg.Email, tok);
+                    await _jira.TestConnectionAsync();
+                }
+            }
+
+            var transitions = await _jira.GetTransitionsAsync(issue.Key);
+            JiraTransitionsPanel.Children.Remove(loading);
+
+            if (transitions.Count == 0)
+            {
+                JiraTransitionsPanel.Children.Add(new TextBlock
+                {
+                    Text       = "Sin transiciones disponibles",
+                    FontSize   = 12,
+                    Foreground = TextSecondaryBrushCached,
+                    Margin     = new Thickness(12, 4, 12, 10)
+                });
+                return;
+            }
+
+            foreach (var tr in transitions)
+                JiraTransitionsPanel.Children.Add(BuildMainTransitionButton(tr));
+            JiraTransitionsPanel.Children.Add(new Border { Height = 4 });
+        }
+
+        private static readonly SolidColorBrush JiraTransitionHoverBrush =
+            new(Color.FromArgb(35, 99, 102, 241));
+
+        private Border BuildMainTransitionButton(POTimeTracker.Models.JiraTransition tr)
+        {
+            var categoryBrush = GetJiraTransitionCategoryBrush(tr);
+
+            var dot = new System.Windows.Shapes.Ellipse
+            {
+                Width             = 9,
+                Height            = 9,
+                Fill              = categoryBrush,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin            = new Thickness(0, 0, 9, 0),
+                Opacity           = tr.IsAvailable ? 1.0 : 0.4
+            };
+
+            var label = new TextBlock
+            {
+                Text              = tr.Name,
+                FontSize          = 12,
+                Foreground        = tr.IsAvailable ? TextPrimaryBrushCached : TextMutedBrushCached,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            var row = new StackPanel
+            {
+                Orientation       = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            row.Children.Add(dot);
+            row.Children.Add(label);
+
+            if (!tr.IsAvailable)
+                row.Children.Add(new TextBlock
+                {
+                    Text              = "  ·  no disponible",
+                    FontSize          = 10,
+                    Foreground        = TextMutedBrushCached,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Opacity           = 0.5
+                });
+
+            var capturedId = tr.Id;
+            // Border en lugar de Button para evitar que WPF sobreescriba el hover
+            var container = new Border
+            {
+                Background   = TransparentBrush,
+                CornerRadius = new CornerRadius(6),
+                Padding      = new Thickness(10, 8, 10, 8),
+                Margin       = new Thickness(4, 1, 4, 1),
+                Cursor       = tr.IsAvailable ? Cursors.Hand : Cursors.Arrow,
+                Child        = row
+            };
+
+            if (tr.IsAvailable)
+            {
+                container.MouseEnter        += (s, _) => ((Border)s).Background = JiraTransitionHoverBrush;
+                container.MouseLeave        += (s, _) => ((Border)s).Background = TransparentBrush;
+                container.MouseLeftButtonUp += (s, ev) => { ev.Handled = true; _ = ApplyJiraTransitionAsync(capturedId); };
+            }
+
+            return container;
+        }
+
+        private async System.Threading.Tasks.Task ApplyJiraTransitionAsync(string transitionId)
+        {
+            if (_jiraTransitionTargetIssue == null) return;
+            JiraTransitionsPopup.IsOpen = false;
+
+            var issue = _jiraTransitionTargetIssue;
+
+            if (!_jira.IsConnected)
+            {
+                var (cfg, tok) = JiraConfigService.LoadConfig();
+                if (cfg != null && !string.IsNullOrEmpty(tok))
+                {
+                    _jira.Configure(cfg.BaseUrl, cfg.Email, tok);
+                    await _jira.TestConnectionAsync();
+                }
+            }
+
+            var (ok, msg) = await _jira.TransitionIssueAsync(issue.Key, transitionId);
+
+            if (ok)
+            {
+                var updated = await _jira.GetIssueAsync(issue.Key);
+                if (updated != null)
+                {
+                    var idxAll = _jiraAllIssues.FindIndex(i => i.Key == issue.Key);
+                    if (idxAll >= 0) _jiraAllIssues[idxAll] = updated;
+                    var idxFil = _jiraFilteredIssues.FindIndex(i => i.Key == issue.Key);
+                    if (idxFil >= 0) _jiraFilteredIssues[idxFil] = updated;
+                    BuildJiraIssuesList();
+                }
+                ShowStatusMessage($"Estado de {issue.Key} cambiado", false);
+            }
+            else
+            {
+                ShowStatusMessage(msg, true);
+            }
+        }
+
+        private static SolidColorBrush GetJiraTransitionCategoryBrush(POTimeTracker.Models.JiraTransition tr)
+        {
+            if (JiraTransitionIsCancelLike(tr.Name) || JiraTransitionIsCancelLike(tr.ToStatusName))
+                return new SolidColorBrush(Color.FromRgb(248, 113, 113)); // rojo = cancelar/rechazar
+
+            return tr.ToStatusCategory switch
+            {
+                "done"          => new SolidColorBrush(Color.FromRgb(52,  211, 153)), // verde = completado
+                "indeterminate" => new SolidColorBrush(Color.FromRgb(38,  132, 255)), // azul  = en progreso
+                "new"           => new SolidColorBrush(Color.FromRgb(101, 109, 134)), // gris  = por hacer
+                _               => new SolidColorBrush(Color.FromRgb(101, 109, 134))
+            };
+        }
+
+        private static bool JiraTransitionIsCancelLike(string name) =>
+            !string.IsNullOrEmpty(name) && (
+                name.Contains("cancel",  StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("rechaz",  StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("reject",  StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("invalid", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("descart", StringComparison.OrdinalIgnoreCase));
+
+        private void JiraTransitionsPopup_Closed(object? sender, EventArgs e)
+        {
+            _ = System.Threading.Tasks.Task.Delay(200).ContinueWith(
+                _ => Dispatcher.Invoke(() => _suppressAutoHide = false));
+        }
+
 
         private void BtnJiraFilter_Click(object sender, RoutedEventArgs e)
         {
