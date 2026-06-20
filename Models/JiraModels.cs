@@ -27,6 +27,8 @@ namespace POTimeTracker.Models
         public string StatusCategory { get; set; } = "";
         public string IssueType { get; set; } = "";
         public string Assignee { get; set; } = "";
+        public string ProjectKey { get; set; } = "";
+        public string ProjectName { get; set; } = "";
         public override string ToString() => $"{Key}: {Summary}";
     }
 

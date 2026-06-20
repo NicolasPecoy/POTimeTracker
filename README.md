@@ -344,6 +344,8 @@ dotnet publish POTimeTracker.csproj `
   -o publish/
 ```
 
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+
 El ejecutable queda en `publish\POTimeTracker.exe`. Pesa ~60-80 MB porque incluye el runtime de .NET.
 
 ### En Visual Studio 2022
