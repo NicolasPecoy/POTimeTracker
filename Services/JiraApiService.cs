@@ -189,7 +189,7 @@ namespace POTimeTracker.Services
                 var url = $"{_baseUrl}/rest/api/3/search/jql"
                         + $"?jql={Uri.EscapeDataString(jql)}"
                         + $"&maxResults={Math.Min(pageSize, 100)}"
-                        + "&fields=summary,status,issuetype,assignee";
+                        + "&fields=summary,status,issuetype,assignee,project";
                 if (pageToken != null)
                     url += $"&nextPageToken={Uri.EscapeDataString(pageToken)}";
 
@@ -256,7 +256,7 @@ namespace POTimeTracker.Services
             try
             {
                 var url = $"{_baseUrl}/rest/api/3/issue/{Uri.EscapeDataString(issueKey.Trim())}"
-                        + "?fields=summary,status,issuetype,assignee";
+                        + "?fields=summary,status,issuetype,assignee,project";
                 var response = await _client.GetAsync(url);
                 var body = await response.Content.ReadAsStringAsync();
                 if (!response.IsSuccessStatusCode) return null;
@@ -532,8 +532,10 @@ namespace POTimeTracker.Services
             var summary = "";
             var status  = "";
             var statusCategory = "";
-            var issueType = "";
-            var assignee  = "";
+            var issueType  = "";
+            var assignee   = "";
+            var projectKey = "";
+            var projectName = "";
 
             if (item.TryGetProperty("fields", out var fields))
             {
@@ -552,6 +554,13 @@ namespace POTimeTracker.Services
                 if (fields.TryGetProperty("assignee", out var asn)
                     && asn.ValueKind != JsonValueKind.Null)
                     assignee = GetString(asn, "displayName");
+
+                if (fields.TryGetProperty("project", out var proj)
+                    && proj.ValueKind != JsonValueKind.Null)
+                {
+                    projectKey  = GetString(proj, "key");
+                    projectName = GetString(proj, "name");
+                }
             }
 
             return new JiraIssue
@@ -562,7 +571,9 @@ namespace POTimeTracker.Services
                 Status         = status,
                 StatusCategory = statusCategory,
                 IssueType      = issueType,
-                Assignee       = assignee
+                Assignee       = assignee,
+                ProjectKey     = projectKey,
+                ProjectName    = projectName
             };
         }
 

@@ -1106,14 +1106,24 @@ namespace POTimeTracker.Views
             Grid.SetColumn(bar, 0);
             outerGrid.Children.Add(bar);
 
-            var keyBlock = new TextBlock
+            var keyRow = new StackPanel { Orientation = Orientation.Horizontal };
+            keyRow.Children.Add(new TextBlock
             {
                 Text       = issue.Key,
                 FontSize   = 10,
                 FontWeight = FontWeights.SemiBold,
                 FontFamily = new FontFamily("Consolas"),
                 Foreground = new SolidColorBrush(Color.FromRgb(38, 132, 255))
-            };
+            });
+            if (!string.IsNullOrEmpty(issue.ProjectName))
+                keyRow.Children.Add(new TextBlock
+                {
+                    Text      = $"  ·  {issue.ProjectName}",
+                    FontSize  = 9,
+                    Foreground = TextMutedBrushCached,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin    = new Thickness(0, 0, 0, 1)
+                });
             var summaryBlock = new TextBlock
             {
                 Text         = issue.Summary,
@@ -1123,7 +1133,7 @@ namespace POTimeTracker.Views
                 Margin       = new Thickness(0, 1, 0, 0)
             };
             var infoPanel = new StackPanel();
-            infoPanel.Children.Add(keyBlock);
+            infoPanel.Children.Add(keyRow);
             infoPanel.Children.Add(summaryBlock);
 
             var chk = new CheckBox
@@ -1248,7 +1258,9 @@ namespace POTimeTracker.Views
             if (!string.IsNullOrEmpty(query))
                 filtered = filtered.Where(i =>
                     i.Key.ToLower().Contains(query) ||
-                    i.Summary.ToLower().Contains(query));
+                    i.Summary.ToLower().Contains(query) ||
+                    i.ProjectKey.ToLower().Contains(query) ||
+                    i.ProjectName.ToLower().Contains(query));
             if (_jiraActiveStatusFilters.Count > 0)
                 filtered = filtered.Where(i => _jiraActiveStatusFilters.Contains(i.Status));
 

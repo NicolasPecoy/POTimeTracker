@@ -328,7 +328,8 @@ namespace POTimeTracker.Views
             grid.Children.Add(bar);
 
             var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            info.Children.Add(new TextBlock
+            var keyRow = new StackPanel { Orientation = Orientation.Horizontal };
+            keyRow.Children.Add(new TextBlock
             {
                 Text         = issue.Key,
                 FontSize     = 11,
@@ -337,6 +338,17 @@ namespace POTimeTracker.Views
                 Foreground   = JiraBlue,
                 TextTrimming = TextTrimming.CharacterEllipsis
             });
+            if (!string.IsNullOrEmpty(issue.ProjectName))
+                keyRow.Children.Add(new TextBlock
+                {
+                    Text         = $"  ·  {issue.ProjectName}",
+                    FontSize     = 10,
+                    Foreground   = TextMuted,
+                    VerticalAlignment = VerticalAlignment.Bottom,
+                    Margin       = new Thickness(0, 0, 0, 1),
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                });
+            info.Children.Add(keyRow);
             info.Children.Add(new TextBlock
             {
                 Text         = issue.Summary,
@@ -424,7 +436,9 @@ namespace POTimeTracker.Views
             if (!string.IsNullOrEmpty(query))
                 filtered = filtered.Where(i =>
                     i.Key.ToLower().Contains(query) ||
-                    i.Summary.ToLower().Contains(query));
+                    i.Summary.ToLower().Contains(query) ||
+                    i.ProjectKey.ToLower().Contains(query) ||
+                    i.ProjectName.ToLower().Contains(query));
 
             if (_activeStatusFilters.Count > 0)
                 filtered = filtered.Where(i => _activeStatusFilters.Contains(i.Status));
