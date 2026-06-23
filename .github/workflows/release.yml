@@ -47,11 +47,21 @@ jobs:
           }
           Write-Host "OK: versión $csprojVersion coincide con el tag."
 
-      # 5. Restaurar paquetes NuGet
+      # 5. Crear el archivo .env con las credenciales de Jira (desde GitHub Secrets)
+      - name: Crear .env con credenciales Jira
+        shell: pwsh
+        run: |
+          @"
+          JIRA_BASE_URL=${{ secrets.JIRA_BASE_URL }}
+          JIRA_EMAIL=${{ secrets.JIRA_EMAIL }}
+          JIRA_TOKEN=${{ secrets.JIRA_TOKEN }}
+          "@ | Set-Content -Path .env -Encoding utf8
+
+      # 6. Restaurar paquetes NuGet
       - name: Restaurar dependencias
         run: dotnet restore
 
-      # 6. Compilar y publicar — exe único self-contained para Windows x64
+      # 7. Compilar y publicar — exe único self-contained para Windows x64
       - name: Publicar (self-contained, single file)
         run: |
           dotnet publish POTimeTracker.csproj `
@@ -63,16 +73,17 @@ jobs:
             -p:Version=${{ steps.version.outputs.VERSION }} `
             -o publish/
 
-      # 7. Renombrar el exe para incluir la versión
-      - name: Renombrar ejecutable
+      # 8. Empaquetar exe + .env en un zip
+      - name: Empaquetar en zip
         shell: pwsh
         run: |
-          $src = "publish\POTimeTracker.exe"
-          $dst = "publish\POTimeTracker-${{ steps.version.outputs.VERSION }}.exe"
-          Rename-Item -Path $src -NewName (Split-Path $dst -Leaf)
-          Write-Host "Generado: $dst"
+          $ver = "${{ steps.version.outputs.VERSION }}"
+          $zipName = "POTimeTracker-$ver.zip"
+          Rename-Item -Path "publish\POTimeTracker.exe" -NewName "POTimeTracker.exe"
+          Compress-Archive -Path "publish\POTimeTracker.exe", "publish\.env" -DestinationPath $zipName
+          Write-Host "Generado: $zipName"
 
-      # 8. Crear el Release en GitHub y adjuntar el exe
+      # 9. Crear el Release en GitHub y adjuntar el zip
       - name: Crear GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -82,11 +93,11 @@ jobs:
             ## POTimeTracker ${{ steps.version.outputs.TAG }}
 
             ### Instalación
-            1. Descargá `POTimeTracker-${{ steps.version.outputs.VERSION }}.exe`
-            2. Copiá el `.exe` a cualquier carpeta (Escritorio, Documentos, etc.)
-            3. Ejecutá el `.exe` — no requiere instalación
+            1. Descargá `POTimeTracker-${{ steps.version.outputs.VERSION }}.zip`
+            2. Extraé el `.zip` a cualquier carpeta (Escritorio, Documentos, etc.)
+            3. Ejecutá `POTimeTracker.exe` — no requiere instalación
 
             > La aplicación incluye el runtime de .NET — no necesitás instalar nada más.
-          files: publish/POTimeTracker-${{ steps.version.outputs.VERSION }}.exe
+          files: POTimeTracker-${{ steps.version.outputs.VERSION }}.zip
           draft: false
           prerelease: false
