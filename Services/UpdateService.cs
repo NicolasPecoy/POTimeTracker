@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
@@ -39,7 +40,7 @@ namespace POTimeTracker.Services
                     foreach (var asset in assets.EnumerateArray())
                     {
                         var name = asset.GetProperty("name").GetString() ?? string.Empty;
-                        if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                         {
                             downloadUrl = asset.GetProperty("browser_download_url").GetString() ?? string.Empty;
                             break;
@@ -71,17 +72,29 @@ namespace POTimeTracker.Services
             var currentExe = Process.GetCurrentProcess().MainModule?.FileName;
             if (string.IsNullOrEmpty(currentExe)) return;
 
+            var appDir  = Path.GetDirectoryName(currentExe)!;
             var tempDir = Path.GetTempPath();
-            var newExe  = Path.Combine(tempDir, "POTimeTracker_update.exe");
+            var zipPath = Path.Combine(tempDir, "POTimeTracker_update.zip");
+            var extract = Path.Combine(tempDir, "POTimeTracker_update_extract");
             var script  = Path.Combine(tempDir, "pott_update.bat");
 
             using var http = new HttpClient();
             http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("POTimeTracker", GetCurrentVersion()));
 
             var bytes = await http.GetByteArrayAsync(downloadUrl);
-            await File.WriteAllBytesAsync(newExe, bytes);
+            await File.WriteAllBytesAsync(zipPath, bytes);
 
-            // Batch script: wait for this process to exit, then replace exe and restart
+            // Extract zip to temp folder
+            if (Directory.Exists(extract)) Directory.Delete(extract, recursive: true);
+            System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, extract);
+
+            var newExe = Path.Combine(extract, "POTimeTracker.exe");
+            var newEnv = Path.Combine(extract, ".env");
+            var currentEnv = Path.Combine(appDir, ".env");
+
+            // Build copy commands conditionally
+            var copyEnv = File.Exists(newEnv) ? $"copy /Y \"{newEnv}\" \"{currentEnv}\"" : "rem no .env in zip";
+
             var bat = $"""
 @echo off
 :LOOP
@@ -91,9 +104,9 @@ if not errorlevel 1 (
     goto LOOP
 )
 copy /Y "{newExe}" "{currentExe}"
+{copyEnv}
 start "" "{currentExe}"
 del "{script}"
-del "{newExe}"
 """;
             await File.WriteAllTextAsync(script, bat, System.Text.Encoding.ASCII);
 
