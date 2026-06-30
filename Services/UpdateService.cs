@@ -78,7 +78,7 @@ namespace POTimeTracker.Services
             var extract = Path.Combine(tempDir, "POTimeTracker_update_extract");
             var script  = Path.Combine(tempDir, "pott_update.bat");
 
-            using var http = new HttpClient();
+            using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
             http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("POTimeTracker", GetCurrentVersion()));
 
             var bytes = await http.GetByteArrayAsync(downloadUrl);
