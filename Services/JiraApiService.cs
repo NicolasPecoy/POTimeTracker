@@ -246,8 +246,8 @@ namespace POTimeTracker.Services
         public static string BuildMyIssuesJql(string projectKey = "", bool includeDone = false)
         {
             var jql = includeDone
-                ? "assignee = currentUser() ORDER BY updated DESC"
-                : "assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC";
+                ? "ORDER BY updated DESC"
+                : "statusCategory != Done ORDER BY updated DESC";
             if (!string.IsNullOrWhiteSpace(projectKey))
                 jql = $"project = \"{projectKey}\" AND " + jql;
             return jql;

@@ -480,7 +480,7 @@ namespace POTimeTracker.Views
                 }
                 else
                 {
-                    var jql = $"text ~ \"{query}\" AND assignee = currentUser() ORDER BY updated DESC";
+                    var jql = $"text ~ \"{query}\" ORDER BY updated DESC";
                     _allIssues = await _jira.SearchIssuesAsync(jql, 30);
                 }
             }
