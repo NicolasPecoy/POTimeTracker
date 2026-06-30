@@ -3,6 +3,10 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Credenciales y archivos sensibles
+"Credenciales Jira.txt"
+Credenciales*.txt
+
 # User-specific files
 *.rsuser
 *.suo
