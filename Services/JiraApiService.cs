@@ -136,32 +136,43 @@ namespace POTimeTracker.Services
         // PROJECTS
         // ═══════════════════════════════════════════════════════════
 
-        public async Task<List<JiraProject>> GetProjectsAsync(int maxResults = 50)
+        public async Task<List<JiraProject>> GetProjectsAsync()
         {
             try
             {
-                var response = await _client.GetAsync(
-                    $"{_baseUrl}/rest/api/3/project/search?maxResults={maxResults}&orderBy=name");
-                var body = await response.Content.ReadAsStringAsync();
-                if (!response.IsSuccessStatusCode) return new();
-
-                var json = JsonSerializer.Deserialize<JsonElement>(body);
                 var projects = new List<JiraProject>();
+                var startAt  = 0;
+                const int pageSize = 50;
 
-                if (!json.TryGetProperty("values", out var values)) return projects;
-
-                foreach (var item in values.EnumerateArray())
+                while (true)
                 {
-                    var key = GetString(item, "key");
-                    var name = GetString(item, "name");
-                    if (string.IsNullOrEmpty(key)) continue;
+                    var response = await _client.GetAsync(
+                        $"{_baseUrl}/rest/api/3/project/search?maxResults={pageSize}&startAt={startAt}&orderBy=name");
+                    var body = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode) break;
 
-                    projects.Add(new JiraProject
+                    var json = JsonSerializer.Deserialize<JsonElement>(body);
+                    if (!json.TryGetProperty("values", out var values)) break;
+
+                    var pageCount = 0;
+                    foreach (var item in values.EnumerateArray())
                     {
-                        Id   = GetString(item, "id"),
-                        Key  = key,
-                        Name = name
-                    });
+                        var key = GetString(item, "key");
+                        var name = GetString(item, "name");
+                        if (string.IsNullOrEmpty(key)) continue;
+
+                        projects.Add(new JiraProject
+                        {
+                            Id   = GetString(item, "id"),
+                            Key  = key,
+                            Name = name
+                        });
+                        pageCount++;
+                    }
+
+                    // Si la página vino incompleta, ya llegamos al final
+                    if (pageCount < pageSize) break;
+                    startAt += pageSize;
                 }
 
                 return projects;
