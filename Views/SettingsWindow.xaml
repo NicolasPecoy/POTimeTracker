@@ -35,7 +35,7 @@
 
         <StackPanel>
             <!-- HEADER -->
-            <Border Padding="18,14" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" CornerRadius="16,16,0,0">
+            <Border x:Name="DragHeader" Padding="18,14" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" CornerRadius="16,16,0,0">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                         <GradientStop Color="{StaticResource BgElevated}" Offset="0"/>

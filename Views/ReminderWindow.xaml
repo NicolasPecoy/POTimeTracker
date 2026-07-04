@@ -11,7 +11,7 @@
         ShowInTaskbar="False"
         Topmost="True"
         WindowStartupLocation="Manual">
-    <Border CornerRadius="16"
+    <Border x:Name="DragHeader" CornerRadius="16"
             Background="{StaticResource BgSurfaceBrush}"
             BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1"

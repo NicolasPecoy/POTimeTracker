@@ -30,8 +30,6 @@ namespace POTimeTracker.Views
         private HashSet<string>   _activeStatusFilters = new();
         private bool              _showCompleted = false;
         private CancellationTokenSource? _searchCts;
-        // Progressive loading: incremented every time we start a fresh load; background
-        // tasks compare against this and bail out if it changed (stale load).
         private int _loadGen = 0;
 
         /// <summary>Fired when the window hides itself (minimize button or deactivation).</summary>
@@ -60,6 +58,20 @@ namespace POTimeTracker.Views
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            void AttachDrag(UIElement el) =>
+                el.PreviewMouseLeftButtonDown += (s, ev) =>
+                {
+                    if (!IsInteractiveSource(ev.OriginalSource))
+                        try { DragMove(); } catch { }
+                };
+
+            AttachDrag(DragHeader);
+            AttachDrag(ConfigDragHeader);
+            IsVisibleChanged += (s, ev) => { if ((bool)ev.NewValue) RePositionAsync(); };
+
+            // Position immediately before any async work so window appears in the right spot
+            RePositionAsync();
+
             try
             {
                 _selectedDate = DateTime.Today;
@@ -118,9 +130,24 @@ namespace POTimeTracker.Views
             UpdateLayout();
             var wa = SystemParameters.WorkArea;
             MaxHeight = wa.Height - 20;
-            double h = ActualHeight > 50 ? ActualHeight : Math.Min(750, wa.Height - 20);
+            var h = ActualHeight > 50 ? ActualHeight : Math.Min(750, wa.Height - 20);
             Left = Math.Max(wa.Left, wa.Right - Width - 10);
             Top  = Math.Max(wa.Top,  wa.Bottom - h - 10);
+        }
+
+        private static bool IsInteractiveSource(object src)
+        {
+            if (src is not DependencyObject dep) return false;
+            var el = dep as FrameworkElement;
+            while (el != null)
+            {
+                if (el is Button or TextBox or PasswordBox or CheckBox or
+                    RadioButton or ComboBox or Slider or
+                    ListBox or ListBoxItem or ToggleButton) return true;
+                el = VisualTreeHelper.GetParent(el) as FrameworkElement;
+                if (el is Window) break;
+            }
+            return false;
         }
 
         private void UpdateDateDisplay() =>

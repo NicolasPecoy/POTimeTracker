@@ -83,6 +83,16 @@ namespace POTimeTracker.Views
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            void AttachDrag(UIElement el) =>
+                el.PreviewMouseLeftButtonDown += (s, ev) =>
+                {
+                    if (!IsInteractiveSource(ev.OriginalSource))
+                        try { DragMove(); } catch { }
+                };
+
+            AttachDrag(DragHeader);
+            AttachDrag(LoginDragHeader);
+
             _notifyIcon = (TaskbarIcon)FindResource("NotifyIcon");
             ApplyMenuIcons();
             EnsureRunAtStartup();
@@ -147,11 +157,27 @@ namespace POTimeTracker.Views
 
         private void PositionAboveTray()
         {
+            UpdateLayout();
             var wa = SystemParameters.WorkArea;
             MaxHeight = wa.Height - 20;
-            var height = ActualHeight > 50 ? ActualHeight : Math.Min(750, wa.Height - 20);
+            var h = ActualHeight > 50 ? ActualHeight : Math.Min(750, wa.Height - 20);
             Left = Math.Max(wa.Left, wa.Right - Width - 10);
-            Top = Math.Max(wa.Top, wa.Bottom - height - 10);
+            Top  = Math.Max(wa.Top,  wa.Bottom - h - 10);
+        }
+
+        private static bool IsInteractiveSource(object src)
+        {
+            if (src is not DependencyObject dep) return false;
+            var el = dep as FrameworkElement;
+            while (el != null)
+            {
+                if (el is Button or TextBox or PasswordBox or CheckBox or
+                    RadioButton or ComboBox or Slider or
+                    ListBox or ListBoxItem or ToggleButton) return true;
+                el = VisualTreeHelper.GetParent(el) as FrameworkElement;
+                if (el is Window) break; // don't traverse above window content
+            }
+            return false;
         }
 
         private void PlayFadeIn()
@@ -873,7 +899,6 @@ namespace POTimeTracker.Views
             }
 
             Hide();
-            PositionWindowAboveTray(_jiraWindow);
             _jiraWindow.Show();
             _jiraWindow.Activate();
         }
@@ -891,16 +916,6 @@ namespace POTimeTracker.Views
             PlayFadeIn();
             _ = System.Threading.Tasks.Task.Delay(500).ContinueWith(
                 _ => Dispatcher.Invoke(() => _suppressAutoHide = false));
-        }
-
-        private static void PositionWindowAboveTray(Window win)
-        {
-            win.UpdateLayout();
-            var wa = SystemParameters.WorkArea;
-            win.MaxHeight = wa.Height - 20;
-            double h = win.ActualHeight > 50 ? win.ActualHeight : Math.Min(500, wa.Height - 20);
-            win.Left = Math.Max(wa.Left, wa.Right - win.Width - 10);
-            win.Top  = Math.Max(wa.Top,  wa.Bottom - h - 10);
         }
 
         private void ChkLogToJira_Changed(object sender, RoutedEventArgs e)

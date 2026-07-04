@@ -41,7 +41,7 @@
                 <StackPanel Margin="28,24">
 
                     <!-- Logo + Title -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,24">
+                    <StackPanel x:Name="ConfigDragHeader" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,24">
                         <Border CornerRadius="10" Width="42" Height="42" Margin="0,0,12,0">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -123,7 +123,7 @@
             <StackPanel>
 
                 <!-- HEADER -->
-                <Border Padding="18,14" BorderBrush="{StaticResource BorderBrush}"
+                <Border x:Name="DragHeader" Padding="18,14" BorderBrush="{StaticResource BorderBrush}"
                         BorderThickness="0,0,0,1" CornerRadius="16,16,0,0">
                     <Border.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">

@@ -10,6 +10,8 @@
     <RootNamespace>POTimeTracker</RootNamespace>
     <Description>Project Open - Registro de Horas Widget</Description>
     <Version>1.0.8</Version>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>

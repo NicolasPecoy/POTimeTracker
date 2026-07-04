@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using POTimeTracker.Models;
 using POTimeTracker.Services;
@@ -22,6 +25,11 @@ namespace POTimeTracker.Views
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            DragHeader.PreviewMouseLeftButtonDown += (s, e) =>
+            {
+                if (!IsInteractiveSource(e.OriginalSource))
+                    try { DragMove(); } catch { }
+            };
             PopulateHourCombo();
             PopulateMinuteCombo();
             LoadCurrentSettings();
@@ -34,7 +42,22 @@ namespace POTimeTracker.Views
             var wa = SystemParameters.WorkArea;
             double h = ActualHeight > 50 ? ActualHeight : 600;
             Left = Math.Max(wa.Left, wa.Right - Width - 10);
-            Top = Math.Max(wa.Top, wa.Bottom - h - 10);
+            Top  = Math.Max(wa.Top,  wa.Bottom - h - 10);
+        }
+
+        private static bool IsInteractiveSource(object src)
+        {
+            if (src is not DependencyObject dep) return false;
+            var el = dep as FrameworkElement;
+            while (el != null)
+            {
+                if (el is Button or TextBox or PasswordBox or CheckBox or
+                    RadioButton or ComboBox or Slider or
+                    ListBox or ListBoxItem or ToggleButton) return true;
+                el = VisualTreeHelper.GetParent(el) as FrameworkElement;
+                if (el is Window) break;
+            }
+            return false;
         }
 
         private void PopulateHourCombo()
