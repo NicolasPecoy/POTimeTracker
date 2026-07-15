@@ -283,6 +283,111 @@ namespace POTimeTracker.Services
         }
 
         // ═══════════════════════════════════════════════════════════
+        // ISSUE CREATION
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Creates an issue in the given project and, if requested, relates it to another issue
+        /// (e.g. an Epic living in a different project). True parent/Epic hierarchy requires
+        /// both issues to be in the same project, which isn't always possible (different project,
+        /// or the account lacks create permission there) — a generic cross-project issue link is
+        /// used instead. Linking failures are logged but don't fail the overall report, since the
+        /// issue itself was filed successfully.
+        /// </summary>
+        public async Task<(bool Success, string Message, string IssueKey)> CreateIssueAsync(
+            string projectKey, string summary, string description,
+            string issueTypeName = "Tarea", string? relatedIssueKey = null)
+        {
+            var (success, message, issueKey) = await CreateIssueRequestAsync(
+                projectKey, summary, description, issueTypeName);
+
+            if (!success || string.IsNullOrEmpty(issueKey) || string.IsNullOrWhiteSpace(relatedIssueKey))
+                return (success, message, issueKey);
+
+            bool linked = await TryCreateIssueLinkAsync(issueKey, relatedIssueKey);
+            if (!linked)
+                LogService.Warn($"CreateIssueAsync: {issueKey} creado pero no se pudo vincular a {relatedIssueKey}");
+
+            return (true, "Issue creado", issueKey);
+        }
+
+        private async Task<(bool Success, string Message, string IssueKey)> CreateIssueRequestAsync(
+            string projectKey, string summary, string description, string issueTypeName)
+        {
+            try
+            {
+                var fields = new Dictionary<string, object>
+                {
+                    ["project"]     = new { key = projectKey },
+                    ["summary"]     = summary,
+                    ["issuetype"]   = new { name = issueTypeName },
+                    ["description"] = BuildAdfDoc(description)
+                };
+
+                var content = new StringContent(
+                    JsonSerializer.Serialize(new { fields }),
+                    Encoding.UTF8,
+                    "application/json");
+
+                var response = await _client.PostAsync($"{_baseUrl}/rest/api/3/issue", content);
+                var respBody = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                    return (false, $"Jira {(int)response.StatusCode}: {ExtractJiraError(respBody)}", "");
+
+                var json = JsonSerializer.Deserialize<JsonElement>(respBody);
+                return (true, "Issue creado", GetString(json, "key"));
+            }
+            catch (TaskCanceledException ex)
+            {
+                LogService.Warn("JiraApiService.CreateIssueRequestAsync: timeout", ex);
+                return (false, "Timeout al conectar con Jira", "");
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("JiraApiService.CreateIssueRequestAsync", ex);
+                return (false, $"Error: {ex.Message}", "");
+            }
+        }
+
+        /// <summary>
+        /// Creates a generic "Relates" issue link between two issues. Unlike the parent/Epic
+        /// hierarchy, issue links work across projects and don't require create permission on
+        /// the other side, so this is the only linking mechanism that reliably works when the
+        /// two issues live in different projects.
+        /// </summary>
+        private async Task<bool> TryCreateIssueLinkAsync(string issueKey, string otherIssueKey)
+        {
+            try
+            {
+                var bodyObj = new
+                {
+                    type = new { name = "Relates" },
+                    inwardIssue = new { key = issueKey },
+                    outwardIssue = new { key = otherIssueKey }
+                };
+                var content = new StringContent(
+                    JsonSerializer.Serialize(bodyObj),
+                    Encoding.UTF8,
+                    "application/json");
+
+                var response = await _client.PostAsync($"{_baseUrl}/rest/api/3/issueLink", content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadAsStringAsync();
+                    LogService.Warn($"JiraApiService.TryCreateIssueLinkAsync: Jira {(int)response.StatusCode}: {ExtractJiraError(body)}");
+                }
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn($"JiraApiService.TryCreateIssueLinkAsync({issueKey} -> {otherIssueKey})", ex);
+                return false;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
         // WORKLOG
         // ═══════════════════════════════════════════════════════════
 
@@ -298,7 +403,7 @@ namespace POTimeTracker.Services
                 {
                     timeSpentSeconds,
                     started,
-                    comment = BuildAdfComment(
+                    comment = BuildAdfDoc(
                         string.IsNullOrWhiteSpace(comment)
                             ? "Horas registradas desde PO Time Tracker"
                             : comment)
@@ -509,7 +614,7 @@ namespace POTimeTracker.Services
             return $"{localTime:yyyy-MM-ddTHH:mm:ss.fff}{sign}{abs.Hours:00}{abs.Minutes:00}";
         }
 
-        private static object BuildAdfComment(string text) =>
+        private static object BuildAdfDoc(string text) =>
             new
             {
                 type    = "doc",

@@ -4,11 +4,14 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using POTimeTracker.Services;
 
 namespace POTimeTracker.Views
 {
     public partial class ReminderWindow : Window
     {
+        private const double BaseWidth = 360;
+
         public ReminderWindow()
         {
             InitializeComponent();
@@ -19,7 +22,27 @@ namespace POTimeTracker.Views
                     if (!IsInteractiveSource(e.OriginalSource))
                         try { DragMove(); } catch { }
                 };
+
+                ApplyUiScale();
+                UiScaleService.ScaleChanged += OnUiScaleChanged;
             };
+            Closed += (s, _) => UiScaleService.ScaleChanged -= OnUiScaleChanged;
+        }
+
+        private void ApplyUiScale()
+        {
+            var scale = UiScaleService.Current;
+            Width = BaseWidth * scale;
+            DragHeader.LayoutTransform = new ScaleTransform(scale, scale);
+        }
+
+        private void OnUiScaleChanged(double scale)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                ApplyUiScale();
+                PositionBottomRight();
+            });
         }
 
         public void PositionBottomRight()

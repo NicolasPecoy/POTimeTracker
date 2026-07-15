@@ -24,7 +24,7 @@
         <TranslateTransform/>
     </Window.RenderTransform>
 
-    <Border CornerRadius="16"
+    <Border x:Name="RootBorder" CornerRadius="16"
             Background="{StaticResource BgSurfaceBrush}"
             BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1"
@@ -178,6 +178,41 @@
                                     FontFamily="Consolas" FontSize="16" FontWeight="Bold"
                                     Click="BtnWeeklyPlus_Click"/>
                         </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- SECTION: APARIENCIA -->
+                <Border Background="{StaticResource BgBaseBrush}" CornerRadius="10"
+                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                        Padding="14,12" Margin="0,0,0,18">
+                    <StackPanel>
+                        <TextBlock Text="APARIENCIA" Style="{StaticResource LabelStyle}" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="TAMANO DE FUENTE" Style="{StaticResource LabelStyle}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Style="{StaticResource NavButton}" Content="-"
+                                    FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                                    Click="BtnFontScaleMinus_Click"/>
+                            <Border Grid.Column="1" Background="{StaticResource BgInputBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="6" Margin="6,0">
+                                <TextBlock x:Name="txtFontScale" Text="100%" TextAlignment="Center"
+                                           FontFamily="Consolas" FontSize="18" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           VerticalAlignment="Center" Padding="0,8"/>
+                            </Border>
+                            <Button Grid.Column="2" Style="{StaticResource NavButton}" Content="+"
+                                    FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                                    Click="BtnFontScalePlus_Click"/>
+                        </Grid>
+                        <TextBlock Text="Tamano de fuente y controles en todas las ventanas (85% - 140%)"
+                                   FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                                   Margin="0,6,0,0"/>
                     </StackPanel>
                 </Border>
 

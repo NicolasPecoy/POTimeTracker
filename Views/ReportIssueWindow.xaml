@@ -1,0 +1,122 @@
+<Window x:Class="POTimeTracker.Views.ReportIssueWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Reportar - PO Time Tracker"
+        Width="420" SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        WindowStartupLocation="Manual"
+        Loaded="Window_Loaded"
+        Closed="Window_Closed">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/DarkTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Window.RenderTransform>
+        <TranslateTransform/>
+    </Window.RenderTransform>
+
+    <Border x:Name="RootBorder" CornerRadius="16"
+            Background="{StaticResource BgSurfaceBrush}"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1"
+            Margin="10">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.5" Color="Black"/>
+        </Border.Effect>
+
+        <StackPanel>
+            <!-- HEADER -->
+            <Border x:Name="DragHeader" Padding="18,14" BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,0,0,1" CornerRadius="16,16,0,0">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="{StaticResource BgElevated}" Offset="0"/>
+                        <GradientStop Color="{StaticResource BgSurface}" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Grid.Column="0">
+                        <Border Background="{StaticResource AccentBrush}" CornerRadius="8"
+                                Width="32" Height="32" Margin="0,0,10,0">
+                            <TextBlock Text="!" FontWeight="Bold" FontSize="15" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Reportar" Style="{StaticResource HeaderTitle}"/>
+                            <TextBlock Text="Problema o mejora" Style="{StaticResource HeaderSubtitle}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Button Grid.Column="2" Style="{StaticResource GhostButton}"
+                            Content="X" Width="28" Height="28" Padding="0"
+                            Click="BtnClose_Click" ToolTip="Cerrar"/>
+                </Grid>
+            </Border>
+
+            <!-- CONTENT -->
+            <StackPanel Margin="18,16">
+
+                <TextBlock Text="¿Deseas reportar un problema o una mejora?"
+                           FontSize="13" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="btnTypeProblem" Grid.Column="0"
+                            Style="{StaticResource AccentButton}"
+                            Content="Problema" Height="38"
+                            Click="BtnTypeProblem_Click"/>
+                    <Button x:Name="btnTypeMejora" Grid.Column="2"
+                            Style="{StaticResource GhostButton}"
+                            Content="Mejora" Height="38"
+                            Click="BtnTypeMejora_Click"/>
+                </Grid>
+
+                <TextBlock Text="DESCRIPCION" Style="{StaticResource LabelStyle}"/>
+                <TextBox x:Name="txtDescription" Style="{StaticResource ModernTextBox}"
+                         Height="120" AcceptsReturn="True" TextWrapping="Wrap"
+                         VerticalContentAlignment="Top" Margin="0,0,0,8"/>
+
+                <TextBlock Text="Se creara como una tarea en Jira (proyecto POT)."
+                           FontSize="10" Foreground="{StaticResource TextMutedBrush}"
+                           TextWrapping="Wrap" Margin="0,0,0,16"/>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Style="{StaticResource GhostButton}"
+                            Content="Cancelar" Height="40" Click="BtnClose_Click"/>
+                    <Button x:Name="btnSend" Grid.Column="2" Style="{StaticResource AccentButton}"
+                            Content="Enviar" Height="40" Click="BtnSend_Click"/>
+                </Grid>
+
+                <TextBlock x:Name="txtStatus" FontSize="12" HorizontalAlignment="Center"
+                           Margin="0,10,0,0" Visibility="Collapsed" TextWrapping="Wrap"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

@@ -29,6 +29,7 @@
                     <MenuItem x:Name="menuJira" Header="Abrir Jira" Click="MenuItem_Jira_Click"/>
                     <MenuItem x:Name="menuReload" Header="Recargar Proyectos" Click="MenuItem_Reload_Click"/>
                     <MenuItem x:Name="menuSettings" Header="Configuracion" Click="MenuItem_Settings_Click"/>
+                    <MenuItem x:Name="menuReport" Header="Reportar Problema/Mejora" Click="MenuItem_Report_Click"/>
                     <Separator Background="#2A2D3E"/>
                     <MenuItem x:Name="menuLogout" Header="Cerrar Sesion" Click="MenuItem_Logout_Click"/>
                     <MenuItem x:Name="menuExit" Header="Salir" Click="MenuItem_Exit_Click"/>
@@ -54,7 +55,7 @@
     </Window.RenderTransform>
 
     <!-- Main Container -->
-    <Border CornerRadius="16"
+    <Border x:Name="RootBorder" CornerRadius="16"
             Background="{StaticResource BgSurfaceBrush}"
             BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1"
@@ -161,6 +162,8 @@
                                          Visibility="Collapsed"
                                          IsHitTestVisible="False"/>
                             </Grid>
+                            <Button Style="{StaticResource GhostButton}" Content="&#10069;" Width="28" Height="28" Padding="0"
+                                    Click="BtnReport_Click" ToolTip="Reportar problema o mejora" Margin="0,0,4,0" FontSize="13"/>
                             <Button Style="{StaticResource GhostButton}" Content="&#9881;" Width="28" Height="28" Padding="0"
                                     Click="BtnSettings_Click" ToolTip="Configuracion" Margin="0,0,4,0" FontSize="14"/>
                             <Button Style="{StaticResource GhostButton}" Content="--" Width="28" Height="28" Padding="0"

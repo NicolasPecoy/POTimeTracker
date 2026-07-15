@@ -25,7 +25,7 @@
         <TranslateTransform/>
     </Window.RenderTransform>
 
-    <Border CornerRadius="16"
+    <Border x:Name="RootBorder" CornerRadius="16"
             Background="{StaticResource BgSurfaceBrush}"
             BorderBrush="{StaticResource BorderBrush}"
             BorderThickness="1"
@@ -163,6 +163,9 @@
                                                FontSize="11" FontWeight="SemiBold"/>
                                 </StackPanel>
                             </Border>
+                            <Button Style="{StaticResource GhostButton}" Content="&#10069;" Width="28" Height="28"
+                                    Padding="0" Click="BtnReport_Click" ToolTip="Reportar problema o mejora"
+                                    Margin="0,0,4,0" FontSize="13"/>
                             <Button Style="{StaticResource GhostButton}" Content="&#9881;" Width="28" Height="28"
                                     Padding="0" Click="BtnSettings_Click" ToolTip="Configuracion Jira"
                                     Margin="0,0,4,0" FontSize="14"/>

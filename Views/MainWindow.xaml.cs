@@ -23,6 +23,8 @@ namespace POTimeTracker.Views
 {
     public partial class MainWindow : Window
     {
+        private const double BaseWidth = 420;
+
         private readonly POApiService   _api  = new();
         private readonly JiraApiService _jira = new();
         private JiraWindow? _jiraWindow;
@@ -92,6 +94,9 @@ namespace POTimeTracker.Views
 
             AttachDrag(DragHeader);
             AttachDrag(LoginDragHeader);
+
+            ApplyUiScale();
+            UiScaleService.ScaleChanged += OnUiScaleChanged;
 
             _notifyIcon = (TaskbarIcon)FindResource("NotifyIcon");
             ApplyMenuIcons();
@@ -163,6 +168,22 @@ namespace POTimeTracker.Views
             var h = ActualHeight > 50 ? ActualHeight : Math.Min(750, wa.Height - 20);
             Left = Math.Max(wa.Left, wa.Right - Width - 10);
             Top  = Math.Max(wa.Top,  wa.Bottom - h - 10);
+        }
+
+        private void ApplyUiScale()
+        {
+            var scale = UiScaleService.Current;
+            Width = BaseWidth * scale;
+            RootBorder.LayoutTransform = new ScaleTransform(scale, scale);
+        }
+
+        private void OnUiScaleChanged(double scale)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                ApplyUiScale();
+                if (IsVisible) PositionAboveTray();
+            });
         }
 
         private static bool IsInteractiveSource(object src)
@@ -1824,11 +1845,28 @@ namespace POTimeTracker.Views
         private void ToggleVisibility()
         {
             if (IsVisible) { Hide(); }
-            else { ResetDateIfNeeded(); Show(); PositionAboveTray(); Activate(); PlayFadeIn(); }
+            else { ResetDateIfNeeded(); RefreshJiraPanelIfNeeded(); Show(); PositionAboveTray(); Activate(); PlayFadeIn(); }
         }
 
         private void MenuItem_Open_Click(object sender, RoutedEventArgs e)
-        { ResetDateIfNeeded(); Show(); PositionAboveTray(); Activate(); }
+        { ResetDateIfNeeded(); RefreshJiraPanelIfNeeded(); Show(); PositionAboveTray(); Activate(); }
+
+        /// <summary>Called when a second app instance detects this one is already running and asks it to show itself.</summary>
+        public void BringToFront()
+        {
+            ResetDateIfNeeded();
+            RefreshJiraPanelIfNeeded();
+            Show();
+            PositionAboveTray();
+            Activate();
+            PlayFadeIn();
+        }
+
+        private void RefreshJiraPanelIfNeeded()
+        {
+            if (JiraLinkPanel.Visibility != Visibility.Visible)
+                InitJira();
+        }
 
         private void ResetDateIfNeeded()
         {
@@ -1853,6 +1891,26 @@ namespace POTimeTracker.Views
 
         private void MenuItem_Settings_Click(object sender, RoutedEventArgs e) => OpenSettings();
         private void BtnSettings_Click(object sender, RoutedEventArgs e) => OpenSettings();
+
+        private void MenuItem_Report_Click(object sender, RoutedEventArgs e) => OpenReportWindow();
+        private void BtnReport_Click(object sender, RoutedEventArgs e) => OpenReportWindow();
+
+        private void OpenReportWindow()
+        {
+            var win = new ReportIssueWindow();
+
+            Hide();
+
+            win.ShowDialog();
+
+            _suppressAutoHide = true;
+            Show();
+            PositionAboveTray();
+            Activate();
+            PlayFadeIn();
+            _ = System.Threading.Tasks.Task.Delay(500).ContinueWith(
+                _ => Dispatcher.Invoke(() => _suppressAutoHide = false));
+        }
 
         private void OpenSettings()
         {

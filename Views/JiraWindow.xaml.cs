@@ -17,6 +17,8 @@ namespace POTimeTracker.Views
 {
     public partial class JiraWindow : Window
     {
+        private const double BaseWidth = 420;
+
         private static string DefaultBaseUrl => Environment.GetEnvironmentVariable("JIRA_BASE_URL") ?? "";
         private static string DefaultEmail   => Environment.GetEnvironmentVariable("JIRA_EMAIL")    ?? "";
         private static string DefaultToken   => Environment.GetEnvironmentVariable("JIRA_TOKEN")    ?? "";
@@ -68,6 +70,10 @@ namespace POTimeTracker.Views
             AttachDrag(DragHeader);
             AttachDrag(ConfigDragHeader);
             IsVisibleChanged += (s, ev) => { if ((bool)ev.NewValue) RePositionAsync(); };
+
+            ApplyUiScale();
+            UiScaleService.ScaleChanged += OnUiScaleChanged;
+            Closed += (s, ev) => UiScaleService.ScaleChanged -= OnUiScaleChanged;
 
             // Position immediately before any async work so window appears in the right spot
             RePositionAsync();
@@ -155,6 +161,37 @@ namespace POTimeTracker.Views
 
         private void RePositionAsync() =>
             _ = Dispatcher.BeginInvoke(PositionAboveTray, System.Windows.Threading.DispatcherPriority.Loaded);
+
+        private void ApplyUiScale()
+        {
+            var scale = UiScaleService.Current;
+            Width = BaseWidth * scale;
+            RootBorder.LayoutTransform = new ScaleTransform(scale, scale);
+        }
+
+        private void OnUiScaleChanged(double scale)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                ApplyUiScale();
+                RePositionAsync();
+            });
+        }
+
+        private void BtnReport_Click(object sender, RoutedEventArgs e) => OpenReportWindow();
+
+        private void OpenReportWindow()
+        {
+            var win = new ReportIssueWindow();
+
+            Hide();
+
+            win.ShowDialog();
+
+            Show();
+            RePositionAsync();
+            Activate();
+        }
 
         private async System.Threading.Tasks.Task SwitchToMainViewAsync(JiraConfig config, string user)
         {

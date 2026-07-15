@@ -89,7 +89,8 @@ namespace POTimeTracker.Services
                 config.ReminderOnSaturday,
                 config.ReminderOnSunday,
                 config.ReloginIntervalHours,
-                config.StartDateAsToday
+                config.StartDateAsToday,
+                config.FontScale
             });
             File.WriteAllText(ConfigFile, json);
         }
@@ -111,7 +112,8 @@ namespace POTimeTracker.Services
                     ReminderOnSaturday = data.TryGetProperty("ReminderOnSaturday", out var rs) && rs.GetBoolean(),
                     ReminderOnSunday = data.TryGetProperty("ReminderOnSunday", out var rsu) && rsu.GetBoolean(),
                     ReloginIntervalHours = data.TryGetProperty("ReloginIntervalHours", out var ri) ? ri.GetDouble() : 3.0,
-                    StartDateAsToday = !data.TryGetProperty("StartDateAsToday", out var sdt) || sdt.GetBoolean()
+                    StartDateAsToday = !data.TryGetProperty("StartDateAsToday", out var sdt) || sdt.GetBoolean(),
+                    FontScale = data.TryGetProperty("FontScale", out var fs) && fs.GetDouble() > 0 ? fs.GetDouble() : 1.0
                 };
             }
             catch (Exception ex)

@@ -13,10 +13,18 @@ namespace POTimeTracker.Views
 {
     public partial class SettingsWindow : Window
     {
+        private const double BaseWidth = 420;
+        private const int FontScaleMin = 85;
+        private const int FontScaleMax = 140;
+        private const int FontScaleStep = 5;
+
         public bool SettingsSaved { get; private set; }
 
         private static readonly SolidColorBrush GreenBrush = new(Color.FromRgb(52, 211, 153));
         private static readonly SolidColorBrush RedBrush = new(Color.FromRgb(248, 113, 113));
+
+        private double _originalFontScale = 1.0;
+        private int _fontScalePercent = 100;
 
         public SettingsWindow()
         {
@@ -30,10 +38,18 @@ namespace POTimeTracker.Views
                 if (!IsInteractiveSource(e.OriginalSource))
                     try { DragMove(); } catch { }
             };
+            ApplyUiScale();
             PopulateHourCombo();
             PopulateMinuteCombo();
             LoadCurrentSettings();
             PositionAboveTray();
+        }
+
+        private void ApplyUiScale()
+        {
+            var scale = UiScaleService.Current;
+            Width = BaseWidth * scale;
+            RootBorder.LayoutTransform = new ScaleTransform(scale, scale);
         }
 
         private void PositionAboveTray()
@@ -98,6 +114,11 @@ namespace POTimeTracker.Views
 
             double weekly = Math.Max(1, config.WeeklyTarget > 0 ? config.WeeklyTarget : 40);
             txtWeeklyTarget.Text = weekly.ToString("0.0", CultureInfo.InvariantCulture);
+
+            double fontScale = UiScaleService.Clamp(config.FontScale > 0 ? config.FontScale : 1.0);
+            _originalFontScale = fontScale;
+            _fontScalePercent = (int)Math.Round(fontScale * 100);
+            txtFontScale.Text = $"{_fontScalePercent}%";
         }
 
         private static void SelectComboByValue(System.Windows.Controls.ComboBox combo, int value)
@@ -144,13 +165,32 @@ namespace POTimeTracker.Views
             existing.StartDateAsToday = chkStartDateAsToday.IsChecked == true;
             existing.ReloginIntervalHours = interval;
             existing.WeeklyTarget = weekly;
+            existing.FontScale = _fontScalePercent / 100.0;
 
             CredentialService.SaveConfig(existing);
+            UiScaleService.SetScale(existing.FontScale);
             SettingsSaved = true;
             Close();
         }
 
-        private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+        private void BtnClose_Click(object sender, RoutedEventArgs e)
+        {
+            if (!SettingsSaved)
+                UiScaleService.SetScale(_originalFontScale);
+            Close();
+        }
+
+        private void BtnFontScaleMinus_Click(object sender, RoutedEventArgs e) => AdjustFontScale(-FontScaleStep);
+        private void BtnFontScalePlus_Click(object sender, RoutedEventArgs e) => AdjustFontScale(FontScaleStep);
+
+        private void AdjustFontScale(int delta)
+        {
+            _fontScalePercent = Math.Max(FontScaleMin, Math.Min(FontScaleMax, _fontScalePercent + delta));
+            txtFontScale.Text = $"{_fontScalePercent}%";
+            UiScaleService.SetScale(_fontScalePercent / 100.0);
+            ApplyUiScale();
+            PositionAboveTray();
+        }
 
         private void BtnReloginMinus_Click(object sender, RoutedEventArgs e) =>
             AdjustValue(txtReloginInterval, -0.5, 0.5, 24);

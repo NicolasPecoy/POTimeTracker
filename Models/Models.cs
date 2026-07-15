@@ -68,6 +68,7 @@ namespace POTimeTracker.Models
         public bool ReminderOnSunday { get; set; } = false;
         public double ReloginIntervalHours { get; set; } = 3.0;
         public bool StartDateAsToday { get; set; } = true;
+        public double FontScale { get; set; } = 1.0;
     }
 
     public class WeekDay
