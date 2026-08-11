@@ -50,6 +50,7 @@ namespace POTimeTracker
         {
             Services.EnvLoader.Load();
             Services.UiScaleService.Initialize();
+            Services.JiraConfigService.PurgeLegacyDiskCache();
             base.OnStartup(e);
 
             DispatcherUnhandledException += (_, ex) =>

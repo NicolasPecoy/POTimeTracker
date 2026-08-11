@@ -1,102 +1,71 @@
 using System;
 using System.IO;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using POTimeTracker.Models;
 
 namespace POTimeTracker.Services
 {
+    /// <summary>
+    /// Holds the active Jira connection (URL, email, API token) in memory only, for the
+    /// lifetime of the running process. Nothing is written to disk: on every app restart
+    /// the user has to reconnect via the Jira window. This is intentional — a Jira API
+    /// token must never be cached on disk, even encrypted.
+    /// </summary>
     public static class JiraConfigService
     {
         private static readonly string AppFolder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "POTimeTracker");
 
-        private static readonly string ConfigFile = Path.Combine(AppFolder, "jira_config.json");
-        private static readonly string TokenFile  = Path.Combine(AppFolder, "jira_token.dat");
+        private static readonly string LegacyConfigFile = Path.Combine(AppFolder, "jira_config.json");
+        private static readonly string LegacyTokenFile  = Path.Combine(AppFolder, "jira_token.dat");
+
+        private static JiraConfig? _config;
+        private static string _apiToken = "";
 
         public static void SaveConfig(JiraConfig config, string apiToken)
         {
-            Directory.CreateDirectory(AppFolder);
-
-            var json = JsonSerializer.Serialize(new
+            _config = new JiraConfig
             {
-                config.BaseUrl,
-                config.Email,
-                config.DefaultProjectKey,
-                config.Enabled
-            });
-            File.WriteAllText(ConfigFile, json);
-
-            if (!string.IsNullOrEmpty(apiToken))
-            {
-                var encrypted = ProtectedData.Protect(
-                    Encoding.UTF8.GetBytes(apiToken),
-                    null,
-                    DataProtectionScope.CurrentUser);
-                File.WriteAllBytes(TokenFile, encrypted);
-            }
+                BaseUrl           = config.BaseUrl,
+                Email             = config.Email,
+                DefaultProjectKey = config.DefaultProjectKey,
+                Enabled           = config.Enabled
+            };
+            _apiToken = apiToken ?? "";
         }
 
-        public static (JiraConfig? Config, string ApiToken) LoadConfig()
-        {
-            if (!File.Exists(ConfigFile))
-                return (null, "");
-
-            try
-            {
-                var json = File.ReadAllText(ConfigFile);
-                var data = JsonSerializer.Deserialize<JsonElement>(json);
-
-                var config = new JiraConfig
-                {
-                    BaseUrl          = GetString(data, "BaseUrl"),
-                    Email            = GetString(data, "Email"),
-                    DefaultProjectKey = GetString(data, "DefaultProjectKey"),
-                    Enabled          = data.TryGetProperty("Enabled", out var en) && en.GetBoolean()
-                };
-
-                var token = "";
-                if (File.Exists(TokenFile))
-                {
-                    try
-                    {
-                        var encrypted = File.ReadAllBytes(TokenFile);
-                        var decrypted = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
-                        token = Encoding.UTF8.GetString(decrypted);
-                    }
-                    catch (Exception ex)
-                    {
-                        LogService.Warn("JiraConfigService: no se pudo descifrar el token", ex);
-                    }
-                }
-
-                return (config, token);
-            }
-            catch (Exception ex)
-            {
-                LogService.Error("JiraConfigService.LoadConfig: error al leer config", ex);
-                return (null, "");
-            }
-        }
+        public static (JiraConfig? Config, string ApiToken) LoadConfig() => (_config, _apiToken);
 
         public static void ClearConfig()
         {
-            if (File.Exists(ConfigFile)) File.Delete(ConfigFile);
-            if (File.Exists(TokenFile))  File.Delete(TokenFile);
+            _config = null;
+            _apiToken = "";
         }
 
         public static bool IsConfigured()
         {
-            var (config, token) = LoadConfig();
-            return config != null
-                && !string.IsNullOrWhiteSpace(config.BaseUrl)
-                && !string.IsNullOrWhiteSpace(config.Email)
-                && !string.IsNullOrWhiteSpace(token);
+            return _config != null
+                && !string.IsNullOrWhiteSpace(_config.BaseUrl)
+                && !string.IsNullOrWhiteSpace(_config.Email)
+                && !string.IsNullOrWhiteSpace(_apiToken);
         }
 
-        private static string GetString(JsonElement el, string key) =>
-            el.TryGetProperty(key, out var v) ? v.GetString() ?? "" : "";
+        /// <summary>
+        /// One-time cleanup for installs that still have Jira credentials cached on disk from
+        /// before this became memory-only. Safe to call on every startup — it's a no-op once
+        /// the legacy files are gone.
+        /// </summary>
+        public static void PurgeLegacyDiskCache()
+        {
+            try
+            {
+                if (File.Exists(LegacyConfigFile)) File.Delete(LegacyConfigFile);
+                if (File.Exists(LegacyTokenFile))  File.Delete(LegacyTokenFile);
+            }
+            catch (Exception ex)
+            {
+                LogService.Warn("JiraConfigService.PurgeLegacyDiskCache: no se pudieron borrar archivos viejos", ex);
+            }
+        }
     }
 }
