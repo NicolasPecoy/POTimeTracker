@@ -12,9 +12,10 @@ namespace POTimeTracker.Views
     {
         private const double BaseWidth = 420;
 
-        // Where reported problems/improvements land in Jira.
-        private const string ReportProjectKey  = "POT";
-        private const string ReportIssueType   = "Tarea";
+        // Reports are created as subtasks of this tracking issue.
+        private const string ReportProjectKey = "INV38";
+        private const string ReportParentKey  = "INV38-27";
+        private const string ReportIssueType  = "Subtarea";
 
         private readonly JiraApiService _jira = new();
         private bool _isProblem = true;
@@ -137,7 +138,7 @@ namespace POTimeTracker.Views
                 var summary = $"[{typeLabel}] {(firstLine.Length > 80 ? firstLine[..80] : firstLine)}";
 
                 var (success, message, issueKey) = await _jira.CreateIssueAsync(
-                    ReportProjectKey, summary, description, ReportIssueType);
+                    ReportProjectKey, summary, description, ReportIssueType, ReportParentKey);
 
                 if (success)
                 {

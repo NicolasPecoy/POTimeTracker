@@ -287,32 +287,14 @@ namespace POTimeTracker.Services
         // ═══════════════════════════════════════════════════════════
 
         /// <summary>
-        /// Creates an issue in the given project and, if requested, relates it to another issue
-        /// (e.g. an Epic living in a different project). True parent/Epic hierarchy requires
-        /// both issues to be in the same project, which isn't always possible (different project,
-        /// or the account lacks create permission there) — a generic cross-project issue link is
-        /// used instead. Linking failures are logged but don't fail the overall report, since the
-        /// issue itself was filed successfully.
+        /// Creates an issue in the given project, optionally as a subtask of a parent issue.
+        /// The "parent" field only works on create when the child's issue type is an actual
+        /// subtask type (e.g. "Subtarea") — regular issue types reject a parent that isn't in
+        /// the exact same project/hierarchy level, even if project and parent do match.
         /// </summary>
         public async Task<(bool Success, string Message, string IssueKey)> CreateIssueAsync(
             string projectKey, string summary, string description,
-            string issueTypeName = "Tarea", string? relatedIssueKey = null)
-        {
-            var (success, message, issueKey) = await CreateIssueRequestAsync(
-                projectKey, summary, description, issueTypeName);
-
-            if (!success || string.IsNullOrEmpty(issueKey) || string.IsNullOrWhiteSpace(relatedIssueKey))
-                return (success, message, issueKey);
-
-            bool linked = await TryCreateIssueLinkAsync(issueKey, relatedIssueKey);
-            if (!linked)
-                LogService.Warn($"CreateIssueAsync: {issueKey} creado pero no se pudo vincular a {relatedIssueKey}");
-
-            return (true, "Issue creado", issueKey);
-        }
-
-        private async Task<(bool Success, string Message, string IssueKey)> CreateIssueRequestAsync(
-            string projectKey, string summary, string description, string issueTypeName)
+            string issueTypeName = "Tarea", string? parentKey = null)
         {
             try
             {
@@ -323,6 +305,9 @@ namespace POTimeTracker.Services
                     ["issuetype"]   = new { name = issueTypeName },
                     ["description"] = BuildAdfDoc(description)
                 };
+
+                if (!string.IsNullOrWhiteSpace(parentKey))
+                    fields["parent"] = new { key = parentKey };
 
                 var content = new StringContent(
                     JsonSerializer.Serialize(new { fields }),
@@ -340,50 +325,49 @@ namespace POTimeTracker.Services
             }
             catch (TaskCanceledException ex)
             {
-                LogService.Warn("JiraApiService.CreateIssueRequestAsync: timeout", ex);
+                LogService.Warn("JiraApiService.CreateIssueAsync: timeout", ex);
                 return (false, "Timeout al conectar con Jira", "");
             }
             catch (Exception ex)
             {
-                LogService.Error("JiraApiService.CreateIssueRequestAsync", ex);
+                LogService.Error("JiraApiService.CreateIssueAsync", ex);
                 return (false, $"Error: {ex.Message}", "");
             }
         }
 
-        /// <summary>
-        /// Creates a generic "Relates" issue link between two issues. Unlike the parent/Epic
-        /// hierarchy, issue links work across projects and don't require create permission on
-        /// the other side, so this is the only linking mechanism that reliably works when the
-        /// two issues live in different projects.
-        /// </summary>
-        private async Task<bool> TryCreateIssueLinkAsync(string issueKey, string otherIssueKey)
+        // ═══════════════════════════════════════════════════════════
+        // ISSUE COMMENTS
+        // ═══════════════════════════════════════════════════════════
+
+        /// <summary>Adds a plain comment to an existing issue.</summary>
+        public async Task<(bool Success, string Message)> AddCommentAsync(string issueKey, string commentText)
         {
             try
             {
-                var bodyObj = new
-                {
-                    type = new { name = "Relates" },
-                    inwardIssue = new { key = issueKey },
-                    outwardIssue = new { key = otherIssueKey }
-                };
+                var bodyObj = new { body = BuildAdfDoc(commentText) };
                 var content = new StringContent(
                     JsonSerializer.Serialize(bodyObj),
                     Encoding.UTF8,
                     "application/json");
 
-                var response = await _client.PostAsync($"{_baseUrl}/rest/api/3/issueLink", content);
+                var response = await _client.PostAsync(
+                    $"{_baseUrl}/rest/api/3/issue/{Uri.EscapeDataString(issueKey)}/comment", content);
+                var respBody = await response.Content.ReadAsStringAsync();
 
                 if (!response.IsSuccessStatusCode)
-                {
-                    var body = await response.Content.ReadAsStringAsync();
-                    LogService.Warn($"JiraApiService.TryCreateIssueLinkAsync: Jira {(int)response.StatusCode}: {ExtractJiraError(body)}");
-                }
-                return response.IsSuccessStatusCode;
+                    return (false, $"Jira {(int)response.StatusCode}: {ExtractJiraError(respBody)}");
+
+                return (true, "Comentario agregado");
+            }
+            catch (TaskCanceledException ex)
+            {
+                LogService.Warn("JiraApiService.AddCommentAsync: timeout", ex);
+                return (false, "Timeout al conectar con Jira");
             }
             catch (Exception ex)
             {
-                LogService.Warn($"JiraApiService.TryCreateIssueLinkAsync({issueKey} -> {otherIssueKey})", ex);
-                return false;
+                LogService.Error("JiraApiService.AddCommentAsync", ex);
+                return (false, $"Error: {ex.Message}");
             }
         }
 

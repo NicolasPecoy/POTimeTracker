@@ -98,7 +98,7 @@
                          Height="120" AcceptsReturn="True" TextWrapping="Wrap"
                          VerticalContentAlignment="Top" Margin="0,0,0,8"/>
 
-                <TextBlock Text="Se creara como una tarea en Jira (proyecto POT)."
+                <TextBlock Text="Se creara como una subtarea de INV38-27 en Jira."
                            FontSize="10" Foreground="{StaticResource TextMutedBrush}"
                            TextWrapping="Wrap" Margin="0,0,0,16"/>
 
