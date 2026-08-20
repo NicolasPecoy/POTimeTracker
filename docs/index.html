@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PO Time Tracker — Registro de horas para Windows</title>
+  <meta name="description" content="Widget de escritorio para Windows que registra tus horas en Project Open y Jira sin salir de la bandeja del sistema. Gratis, sin instalador, actualizaciones automáticas." />
+
+  <link rel="icon" href="assets/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <meta property="og:title" content="PO Time Tracker" />
+  <meta property="og:description" content="Registrá tus horas en Project Open y Jira desde la bandeja de Windows." />
+  <meta property="og:type" content="website" />
+</head>
+<body>
+
+  <div class="ambient" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+    <div class="noise"></div>
+  </div>
+
+  <nav class="nav" id="nav">
+    <div class="nav-inner">
+      <a class="brand" href="#top">
+        <span class="brand-mark">PO</span>
+        PO Time Tracker
+      </a>
+      <div class="nav-links">
+        <a href="#features">Funciones</a>
+        <a href="#how">Cómo funciona</a>
+        <a href="https://github.com/NicolasPecoy/POTimeTracker" target="_blank" rel="noopener">GitHub</a>
+        <a class="nav-cta" href="https://github.com/NicolasPecoy/POTimeTracker/releases/latest" target="_blank" rel="noopener">Descargar</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="top">
+    <section class="hero">
+      <span class="eyebrow"><span class="dot"></span> Gratis · Sin instalador · Código abierto</span>
+      <h1>Tus horas, cargadas<br class="br-desktop" /> antes de <span class="gradient">terminar el café</span>.</h1>
+      <p class="hero-sub">
+        Un widget liviano que vive en la bandeja de Windows y registra tu tiempo en
+        Project Open — y en Jira al mismo tiempo, si lo necesitás. Un clic y listo.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="https://github.com/NicolasPecoy/POTimeTracker/releases/latest" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21H4"/><path d="M12 3v14"/><path d="M6 11l6 6 6-6"/></svg>
+          Descargar para Windows
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/NicolasPecoy/POTimeTracker" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.7 5.6.7 12c0 5.1 3.3 9.4 7.9 11 .6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11 11 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.1.7.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.6 7.9-5.9 7.9-11C23.3 5.6 18.3.5 12 .5Z"/></svg>
+          Ver código en GitHub
+        </a>
+      </div>
+      <p class="hero-meta">Windows 10/11 · 64-bit<span class="sep">·</span>.NET incluido, no requiere instalación<span class="sep">·</span><span id="latest-version">última versión en GitHub Releases</span></p>
+
+      <div class="preview-wrap">
+        <div class="mock-widget" role="img" aria-label="Vista previa del widget PO Time Tracker">
+          <div class="mock-header">
+            <div class="mock-logo">PO</div>
+            <div>
+              <div class="mock-title">Registro de Horas</div>
+              <div class="mock-user">tu.usuario</div>
+            </div>
+            <div class="mock-status"><span class="pulse"></span>Online</div>
+          </div>
+          <div class="mock-body">
+            <div class="mock-week">
+              <div class="mock-day">L<span class="n">13</span></div>
+              <div class="mock-day">M<span class="n">14</span></div>
+              <div class="mock-day active">M<span class="n">15</span></div>
+              <div class="mock-day">J<span class="n">16</span></div>
+              <div class="mock-day">V<span class="n">17</span></div>
+              <div class="mock-day">S<span class="n">18</span></div>
+              <div class="mock-day">D<span class="n">19</span></div>
+            </div>
+            <div class="mock-stats">
+              <div class="mock-stat"><div class="label">HOY</div><div class="value">4,0</div></div>
+              <div class="mock-stat green"><div class="label">SEMANA</div><div class="value">32,0</div></div>
+              <div class="mock-stat"><div class="label">META</div><div class="value">40,0</div></div>
+            </div>
+            <div class="mock-field">
+              <div class="flabel">PROYECTO</div>
+              <div class="mock-select">Implementación B1 <span>▾</span></div>
+            </div>
+            <div class="mock-jira-row">
+              <span class="jira-mark">J</span>
+              Registrar también en Jira
+              <span class="mock-check"></span>
+            </div>
+            <div class="mock-submit">Registrar Horas</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <div class="section-head reveal">
+        <div class="section-tag">Funciones</div>
+        <h2>Todo lo que necesitás, nada de lo que sobra</h2>
+        <p>Pensado para cargarse todos los días sin fricción — desde el mismo lugar donde ya trabajás.</p>
+      </div>
+      <div class="features">
+        <div class="feature-card reveal">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          </div>
+          <h3>Registro en un clic</h3>
+          <p>Elegí proyecto, tarea y horas con botones rápidos (0.5, 1, 2, 4, 8) y quedó cargado en Project Open.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l7 16 2.5-6.5L20 11z"/></svg>
+          </div>
+          <h3>Integración con Jira</h3>
+          <p>Activá "Registrar también en Jira" y el mismo tiempo se imputa en el issue correspondiente. Sin duplicar carga.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg>
+          </div>
+          <h3>Vive en la bandeja</h3>
+          <p>No ocupa espacio en tu escritorio ni en la barra de tareas. Doble clic en el ícono y aparece donde estabas.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+          </div>
+          <h3>Se actualiza sola</h3>
+          <p>Cuando sale una versión nueva, la app te avisa y se actualiza con un clic. Nunca más buscar el instalador.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+          </div>
+          <h3>Interfaz a tu medida</h3>
+          <p>Ajustá el tamaño de fuente de toda la app desde configuración — todo el layout se adapta sin recortarse.</p>
+        </div>
+        <div class="feature-card reveal">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          </div>
+          <h3>Recordatorio diario</h3>
+          <p>Un aviso a la hora que elijas para que no se te pase cargar las horas del día.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="section-head reveal">
+        <div class="section-tag">Cómo funciona</div>
+        <h2>De cero a cargado en tres pasos</h2>
+        <p>No hay instalador ni configuración compleja.</p>
+      </div>
+      <div class="steps">
+        <div class="step reveal">
+          <div class="step-num">1</div>
+          <h3>Descargá el .exe</h3>
+          <p>Bajalo desde GitHub Releases y guardalo donde quieras. Incluye .NET, no necesitás instalar nada más.</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-num">2</div>
+          <h3>Iniciá sesión</h3>
+          <p>Usá tu usuario de Project Open. La app se registra sola para abrir junto con Windows.</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-num">3</div>
+          <h3>Cargá tus horas</h3>
+          <p>Elegí proyecto y tarea, tocá un botón de horas y listo — con Jira sincronizado si lo activaste.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="download">
+      <div class="download-panel reveal">
+        <h2>Empezá a cargar tus horas hoy</h2>
+        <p>Gratis, de código abierto, y pensado para no volver a olvidarte de cargar tus horas.</p>
+        <a class="btn btn-primary" href="https://github.com/NicolasPecoy/POTimeTracker/releases/latest" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21H4"/><path d="M12 3v14"/><path d="M6 11l6 6 6-6"/></svg>
+          Descargar para Windows
+        </a>
+        <div class="reqs">
+          <span class="req-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Windows 10 / 11</span>
+          <span class="req-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Sin instalador</span>
+          <span class="req-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>.NET 8 incluido</span>
+          <span class="req-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Actualizaciones automáticas</span>
+        </div>
+        <div class="version-tag" id="version-tag">Consultando última versión…</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>© <span id="year"></span> PO Time Tracker — hecho con .NET 8 y WPF.</span>
+      <div class="footer-links">
+        <a href="https://github.com/NicolasPecoy/POTimeTracker" target="_blank" rel="noopener">Repositorio</a>
+        <a href="https://github.com/NicolasPecoy/POTimeTracker/releases" target="_blank" rel="noopener">Releases</a>
+        <a href="https://github.com/NicolasPecoy/POTimeTracker/issues" target="_blank" rel="noopener">Reportar un problema</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
